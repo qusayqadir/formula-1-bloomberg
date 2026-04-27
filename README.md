@@ -9,3 +9,7 @@
 | Setup the env variables | |
 | Finalize the tech stack ||
 
+
+#### Database Design Doc
+
+[View Databse Architecture](https://www.drawdb.app/editor/diagrams/8dd48dac-4b52-4c9f-9468-14ed81ce5c77)
