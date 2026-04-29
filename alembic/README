@@ -1,1 +1,18 @@
 Generic single-database configuration.
+
+#### Alembic Docs
+Creating a new schema via Alembic:                                                                                      
+                                                                                                                          
+  .venv/bin/alembic revision -m "add silver schema"                                                                       
+
+Then apply it:                                                                                                          
+  .venv/bin/alembic upgrade head
+
+Undo the most recent migration
+.venv/bin/alembic downgrade -1                                                                                          
+
+Undo back to a specific revision ID                                                                                   
+.venv/bin/alembic downgrade 2076e9afa11f              
+                                                                                                                        
+Undo everything (back to empty DB)                                                                                    
+.venv/bin/alembic downgrade base
