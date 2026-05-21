@@ -1,11 +1,13 @@
 import os
 import psycopg
 from dotenv import load_dotenv
-
-from historic_pipeline.ingest.ingest_drivers import fetch_drivers, insert_drivers
-from historic_pipeline.ingest.ingest_circuits import fetch_circuits, insert_circuits
-
 load_dotenv()
+
+from requests import Session
+
+from pipeline.ingest.ingestTables import fetch_drivers, insert_drivers
+from pipeline.ingest.ingestTables import fetch_circuits, insert_circuits
+
 
 if __name__ == "__main__":
     db_url = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
