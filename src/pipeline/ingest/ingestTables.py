@@ -18,6 +18,7 @@ from pipeline.model.round_entry import RoundEntryModel
 BASE_URL = os.environ["BASE_URL"]
 CIRCUITS_URL = f"{BASE_URL}/circuits.json"
 DRIVERS_URL = f"{BASE_URL}/drivers.json"
+TEAM_URL = f"{BASE_URL}/"
 
 
 def fetch_circuits() -> list[CircuitModel]:

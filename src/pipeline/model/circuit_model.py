@@ -1,16 +1,17 @@
 from pydantic import BaseModel
-from datetime import date
 from typing import Optional
+
 
 class Location(BaseModel):
     lat: str
     long: str
-    locality: str
-    country: str
+    locality: Optional[str] = None
+    country: Optional[str] = None
 
 
 class CircuitModel(BaseModel):
-    circuitId: str
-    circuitName: str
-    Location: Location
-    url: Optional[str] = None
+    """Validates a single Circuit object from the Ergast /circuits.json endpoint."""
+    circuitId: str          # → bronze.circuits.api_id
+    circuitName: str        # → bronze.circuits.name
+    Location: Location      # → latitude, longitude, locality, country
+    url: Optional[str] = None  # → bronze.circuits.wikipedia
