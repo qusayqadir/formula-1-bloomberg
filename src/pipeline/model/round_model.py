@@ -28,3 +28,4 @@ class RoundModel(BaseModel):
     Qualifying: Optional[SessionSchedule] = None
     Sprint: Optional[SessionSchedule] = None
     SprintQualifying: Optional[SessionSchedule] = None
+    
