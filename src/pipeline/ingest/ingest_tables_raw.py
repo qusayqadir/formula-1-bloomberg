@@ -7,23 +7,26 @@ from tkinter import INSERT
 import requests
 from datetime import datetime
 
-from pipeline.model.circuit_model import CircuitModel
-from pipeline.model.driver_model import DriverModel
-from pipeline.model.session_entry_model import SessionEntryModel
-from pipeline.model.team_model import TeamModel 
-from pipeline.model.team_driver_model import TeamDriverModel
-from pipeline.model.team_championship_model import TeamChampionshipModel 
-from pipeline.model.driver_championship_model import DriverChampionshipModel
-from pipeline.model.season_model import SeasonModel
-from pipeline.model.round_model import RoundModel
-from pipeline.model.round_entry_model import RoundEntryModel
-from pipeline.model.session_model import SessionModel
+from models import (
+    CircuitModel,
+    DriverModel,
+    SessionEntryModel,
+    TeamModel,
+    TeamDriverModel,
+    TeamChampionshipModel,
+    DriverChampionshipModel,
+    SeasonModel,
+    RoundModel,
+    RoundEntryModel,
+    SessionModel,
+)
 
 BASE_URL = os.environ["BASE_URL"]
 CIRCUITS_URL = f"{BASE_URL}/circuits.json"
 DRIVERS_URL = f"{BASE_URL}/drivers.json"
 SEASON_URL = f"{BASE_URL}/seasons/"
 TEAM_URL = f"{BASE_URL}/constructors/"
+
 
 def fetch_circuits() -> list[CircuitModel]:
     circuits = []
@@ -231,6 +234,34 @@ def fetch_race_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel], 
                 break 
     
     return team_drivers, round_entries, session_entries
+
+def fetch_constructor_standings() -> list[TeamChampionshipModel]: 
+    constructor_standings=[]
+    limit = 100 
+    offset = 0 
+    while True: 
+        for year in range(2011, datetime.now().year): 
+            
+            response=requests.get(f"{BASE_URL}/{year}/constructorstandings.json", params={"limit":limit, "offset":offset})
+            response.raise_for_status() 
+            batch = response.json()["MRData"] 
+
+
+
+
+            constructor_standings.extend(
+                TeamChampionshipModel(
+                    round_api_id=,
+                    year="",
+                    round_number=,
+                    session_number="",
+                    position="",
+                    points=,
+                    win_count=, 
+                    highest_finish=,
+                    adjustment_type=
+                )
+            )
 
 
 def insert_circuits(conn, circuits: list[CircuitModel]) -> None:

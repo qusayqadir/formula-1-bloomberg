@@ -23,9 +23,14 @@ def upgrade() -> None:
     op.execute("ALTER TABLE bronze.team_driver DROP COLUMN IF EXISTS role")
     op.execute("ALTER TABLE bronze.session_entry INSERT COLUMN IF NOT EXISTS position_text")
     op.execute("ALTER TABLE bronze.session_entry RENAME COLUMN time to fastest_lap_time")
+    op.execute("ALTER TABLE bronze.team_championship DROP COLIMNS session_id IF EXISTS")
+    op.execute("ALTER TABLE bronze.team_championship DROP COLIMNS session_number IF EXISTS")
+
 
 def downgrade() -> None:
 
     op.execute("ALTER TABLE bronze.team_driver INSERT COLUMN IF NOT EXISTS role")
     op.execute("ALTER TABLE bronze.session_entry DROP COLUMN IF EXISTS position_text")
     op.execute("ALTER TABLE bronze.session_entry RENAME COLUMN fastest_lap_time to time")
+    op.execute("ALTER TABLE bronze.team_championship INSERT COLIMNS session_id IF NOT EXISTS")
+    op.execute("ALTER TABLE bronze.team_championship INSERT COLIMNS session_number IF NOT EXISTS")

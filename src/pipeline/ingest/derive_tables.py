@@ -1,11 +1,13 @@
 import os
 from datetime import datetime
 
-from pipeline.model.driver_model import DriverModel
-from pipeline.model.round_model import RoundModel
-from pipeline.model.session_model import SessionModel
-from pipeline.model.team_driver_model import TeamDriverModel
-from pipeline.model.session_entry_model import SessionEntryModel
+from models import (
+    DriverModel,
+    RoundModel,
+    SessionModel,
+    TeamDriverModel,
+    SessionEntryModel,
+)
 
 BASE_URL = os.environ["BASE_URL"]
 
