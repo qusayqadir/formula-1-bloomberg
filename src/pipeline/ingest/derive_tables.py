@@ -5,7 +5,6 @@ from pipeline.model.driver_model import DriverModel
 from pipeline.model.round_model import RoundModel
 from pipeline.model.session_model import SessionModel
 from pipeline.model.team_driver_model import TeamDriverModel
-from pipeline.model.round_entry_model import RoundEntryModel
 from pipeline.model.session_entry_model import SessionEntryModel
 
 BASE_URL = os.environ["BASE_URL"]

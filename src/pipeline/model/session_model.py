@@ -15,3 +15,5 @@ class SessionModel(BaseModel):
     type: str                           # "Race" | "Qualifying" | "FP1" | "FP2" | "FP3" | "Sprint" | "SprintQualifying"
     scheduled_at: Optional[datetime] = None  
     is_cancelled: bool = False
+
+    

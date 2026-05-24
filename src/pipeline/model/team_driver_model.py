@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from typing import Optional
 
 
@@ -10,3 +10,7 @@ class TeamDriverModel(BaseModel):
     constructorId: str  #  FK to bronze.team.api_id
     season: str         #  FK to bronze.season.year
     role: Optional[int] = 0  
+
+    @computed_field
+    def api_id(self) -> str:
+        return f"{self.season}_{self.driverId}_{self.constructorId}"
