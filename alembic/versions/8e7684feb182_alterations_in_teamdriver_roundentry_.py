@@ -8,7 +8,6 @@ Create Date: 2026-05-23 20:39:07.316063
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -21,16 +20,33 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
 
     op.execute("ALTER TABLE bronze.team_driver DROP COLUMN IF EXISTS role")
-    op.execute("ALTER TABLE bronze.session_entry INSERT COLUMN IF NOT EXISTS position_text")
-    op.execute("ALTER TABLE bronze.session_entry RENAME COLUMN time to fastest_lap_time")
-    op.execute("ALTER TABLE bronze.team_championship DROP COLIMNS session_id IF EXISTS")
-    op.execute("ALTER TABLE bronze.team_championship DROP COLIMNS session_number IF EXISTS")
+    op.execute("ALTER TABLE bronze.session_entry ADD COLUMN IF NOT EXISTS position_text TEXT")
+    op.execute('ALTER TABLE bronze.session_entry RENAME COLUMN "time" TO fastest_lap_time')
+
+    op.execute("ALTER TABLE bronze.team_championship DROP COLUMN IF EXISTS session_id")
+    op.execute("ALTER TABLE bronze.team_championship DROP COLUMN IF EXISTS session_number")
+    op.execute("ALTER TABLE bronze.driver_championship DROP COLUMN IF EXISTS session_id")
+    op.execute("ALTER TABLE bronze.driver_championship DROP COLUMN IF EXISTS session_number")
+
+    op.execute("ALTER TABLE bronze.team_championship ADD COLUMN IF NOT EXISTS api_id TEXT")
+    op.execute("ALTER TABLE bronze.team_championship ADD CONSTRAINT team_championship_api_id_key UNIQUE (api_id)")
+
+    op.execute("ALTER TABLE bronze.driver_championship ADD COLUMN IF NOT EXISTS api_id TEXT")
+    op.execute("ALTER TABLE bronze.driver_championship ADD CONSTRAINT driver_championship_api_id_key UNIQUE (api_id)")
 
 
 def downgrade() -> None:
 
-    op.execute("ALTER TABLE bronze.team_driver INSERT COLUMN IF NOT EXISTS role")
+    op.execute("ALTER TABLE bronze.team_driver ADD COLUMN IF NOT EXISTS role INT")
     op.execute("ALTER TABLE bronze.session_entry DROP COLUMN IF EXISTS position_text")
-    op.execute("ALTER TABLE bronze.session_entry RENAME COLUMN fastest_lap_time to time")
-    op.execute("ALTER TABLE bronze.team_championship INSERT COLIMNS session_id IF NOT EXISTS")
-    op.execute("ALTER TABLE bronze.team_championship INSERT COLIMNS session_number IF NOT EXISTS")
+    op.execute('ALTER TABLE bronze.session_entry RENAME COLUMN fastest_lap_time TO "time"')
+
+    op.execute("ALTER TABLE bronze.team_championship ADD COLUMN IF NOT EXISTS session_id INT")
+    op.execute("ALTER TABLE bronze.team_championship ADD COLUMN IF NOT EXISTS session_number INT")
+    op.execute("ALTER TABLE bronze.driver_championship ADD COLUMN IF NOT EXISTS session_id INT")
+    op.execute("ALTER TABLE bronze.driver_championship ADD COLUMN IF NOT EXISTS session_number INT")
+
+    op.execute("ALTER TABLE bronze.team_championship DROP CONSTRAINT IF EXISTS team_championship_api_id_key")
+    op.execute("ALTER TABLE bronze.team_championship DROP COLUMN IF EXISTS api_id")
+    op.execute("ALTER TABLE bronze.driver_championship DROP CONSTRAINT IF EXISTS driver_championship_api_id_key")
+    op.execute("ALTER TABLE bronze.driver_championship DROP COLUMN IF EXISTS api_id")

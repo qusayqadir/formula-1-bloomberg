@@ -1,11 +1,16 @@
 from copyreg import constructor
+from curses import termname
 from math import e
 import os
 from sqlite3 import Time
 import time
 from tkinter import INSERT
+from typing import Optional
+from httpx import Response
 import requests
 from datetime import datetime
+
+from sqlalchemy.sql.selectable import TextAsFrom
 
 from models import (
     CircuitModel,
@@ -125,7 +130,7 @@ def fetch_rounds() -> list[RoundModel]:
         
     return rounds
 
-def _get_with_retry(url: str, params: dict = None, retries: int = 3, backoff: float = 5.0):
+def _get_with_retry(url: str, params: Optional[dict] = None, retries: int = 3, backoff: float = 5.0):
     """GET with exponential backoff on 429. Sleeps 0.5s between every request."""
     time.sleep(0.5)
     for attempt in range(retries):
@@ -235,34 +240,66 @@ def fetch_race_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel], 
     
     return team_drivers, round_entries, session_entries
 
-def fetch_constructor_standings() -> list[TeamChampionshipModel]: 
-    constructor_standings=[]
-    limit = 100 
-    offset = 0 
-    while True: 
-        for year in range(2011, datetime.now().year): 
-            
-            response=requests.get(f"{BASE_URL}/{year}/constructorstandings.json", params={"limit":limit, "offset":offset})
-            response.raise_for_status() 
-            batch = response.json()["MRData"] 
+def fetch_all_standings() -> tuple[list[TeamChampionshipModel], list[DriverChampionshipModel]]:
+    """
+    Fetches constructor and driver standings in a single loop per year so that
+    /races.json is only called once per season and total API requests are halved.
+    """
+    constructor_standings = []
+    driver_standings = []
 
+    for year in range(2011, datetime.now().year + 1):
+        # One races.json call per year — shared by both standings fetches
+        races_resp = _get_with_retry(f"{BASE_URL}/{year}/races.json")
+        raw_total = races_resp.json()["MRData"].get("total")
+        total_rounds = int(raw_total) if raw_total else 0
 
-
-
-            constructor_standings.extend(
-                TeamChampionshipModel(
-                    round_api_id=,
-                    year="",
-                    round_number=,
-                    session_number="",
-                    position="",
-                    points=,
-                    win_count=, 
-                    highest_finish=,
-                    adjustment_type=
-                )
+        for round_num in range(1, total_rounds + 1):
+            ── Constructor standings 
+            c_resp = _get_with_retry(
+                f"{BASE_URL}/{year}/{round_num}/constructorstandings.json",
+                params={"limit": 100},
             )
+            c_standings_list = c_resp.json()["MRData"]["StandingsTable"]["StandingsLists"]
 
+            if c_standings_list:
+                for entry in c_standings_list[0]["ConstructorStandings"]:
+                    constructor_standings.append(
+                        TeamChampionshipModel(
+                            team_api_id=entry["Constructor"]["constructorId"],
+                            season_api_id=str(year),
+                            round_api_id=f"{year}_{round_num}",
+                            year=year,
+                            round_number=round_num,
+                            position=int(entry["position"]) if entry.get("position") else None,
+                            points=float(entry["points"]) if entry.get("points") else 0.0,
+                            win_count=int(entry["wins"]) if entry.get("wins") else 0,
+                        )
+                    )
+
+            # ── Driver standings 
+            d_resp = _get_with_retry(
+                f"{BASE_URL}/{year}/{round_num}/driverstandings.json",
+                params={"limit": 100},
+            )
+            d_standings_list = d_resp.json()["MRData"]["StandingsTable"]["StandingsLists"]
+
+            if d_standings_list:
+                for entry in d_standings_list[0]["DriverStandings"]:
+                    driver_standings.append(
+                        DriverChampionshipModel(
+                            driver_api_id=entry["Driver"]["driverId"],
+                            season_api_id=str(year),
+                            round_api_id=f"{year}_{round_num}",
+                            year=year,
+                            round_number=round_num,
+                            position=int(entry["position"]) if entry.get("position") else None,
+                            points=float(entry["points"]) if entry.get("points") else 0.0,
+                            wins=int(entry["wins"]) if entry.get("wins") else 0,
+                        )
+                    )
+
+    return constructor_standings, driver_standings
 
 def insert_circuits(conn, circuits: list[CircuitModel]) -> None:
     for c in circuits:
@@ -358,13 +395,12 @@ def ingest_rounds(conn, rounds: list[RoundModel]) -> None:
               ON CONFLICT (api_id) DO NOTHING
               """,
               (
-                  r.season,                      # → lookup bronze.season.id,
-                  r.Circuit.circuitId,           # → lookup bronze.circuits.id,
-                  f"{r.season}_{r.round}",       # api_id e.g. "2011_15"
-                  int(r.round),                  # number
-                  r.raceName,                    # name
-                  r.date,                        # date
-                  False,                         # is_cancelled
+                  r.season,                      
+                  r.Circuit.circuitId,           
+                  f"{r.season}_{r.round}",       
+                  int(r.round),                  
+                  r.raceName,                    
+                  r.date,                 
               ),
           )
       conn.commit()
@@ -374,7 +410,7 @@ def insert_team_drivers(conn, team_drivers: list[TeamDriverModel]) -> None:
     for driver in team_drivers: 
         conn.execute("""
             INSERT INTO bronze.team_driver
-            (team_id, driver_id, season_id, api_id, role)
+            (team_id, driver_id, season_id, api_id)
             VALUES (
                 (SELECT id FROM bronze.team WHERE api_id = %s),
                 (SELECT id FROM bronze.drivers WHERE api_id = %s),
@@ -442,4 +478,67 @@ def insert_session_entries(conn, session_entries: list[SessionEntryModel]) -> No
                 se.laps_completed,
             ),
         )
+    conn.commit()
+
+
+def insert_constructor_championship(conn, constructor_standings: list[TeamChampionshipModel]) -> None:
+
+    for cs in constructor_standings:
+        conn.execute(
+            """
+            INSERT INTO bronze.team_championship
+                (api_id, team_id, season_id, round_id, year, round_number, position, points, win_count)
+            VALUES (
+                %s,
+                (SELECT id FROM bronze.team   WHERE api_id = %s),
+                (SELECT id FROM bronze.season WHERE api_id = %s),
+                (SELECT id FROM bronze.round  WHERE api_id = %s),
+                %s, %s, %s, %s, %s
+            )
+            ON CONFLICT (api_id) DO NOTHING
+            """,
+            (
+                cs.api_id,
+                cs.team_api_id,
+                cs.season_api_id,
+                cs.round_api_id,
+                cs.year,
+                cs.round_number,
+                cs.position,
+                cs.points,
+                cs.win_count,
+            ),
+        )
+
+    conn.commit()
+
+def insert_driver_championship(conn, driver_standings: list[DriverChampionshipModel]) -> None:
+
+    for ds in driver_standings:
+        conn.execute(
+            """
+            INSERT INTO bronze.driver_championship
+                (api_id, driver_id, season_id, round_id, year, round_number, position, points, win_count)
+            VALUES (
+                %s,
+                (SELECT id FROM bronze.drivers WHERE api_id = %s),
+                (SELECT id FROM bronze.season  WHERE api_id = %s),
+                (SELECT id FROM bronze.round   WHERE api_id = %s),
+                %s, %s, %s, %s, %s
+            )
+            ON CONFLICT (api_id) DO NOTHING
+            """,
+            (
+                ds.api_id,
+                ds.driver_api_id,
+                ds.season_api_id,
+                ds.round_api_id,
+                ds.year,
+                ds.round_number,
+                ds.position,
+                ds.points,
+                ds.wins,
+            ),
+        )
+
     conn.commit()

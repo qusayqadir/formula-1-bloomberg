@@ -131,25 +131,33 @@ class TeamDriverModel(BaseModel):
 
 
 class TeamChampionshipModel(BaseModel):
-    # session_api_id = season_round_race
-    # team_api_id    = team_name
-    # season_api_id  = year
-    # round_api_id   = year_round
-    constructor: str
+    team_api_id: str
+    season_api_id: str
+    round_api_id: str
     year: int
     round_number: int
-    session_number: int
-    position: int
-    points: int
+    position: Optional[int] = None
+    points: float        # float: handles 0.5 bonus points
     win_count: int
-    highest_finish: int
-    adjustment_type: int
+
+    @computed_field
+    def api_id(self) -> str:
+        # e.g. "2023_5_red_bull"
+        return f"{self.round_api_id}_{self.team_api_id}"
 
 
 class DriverChampionshipModel(BaseModel):
-    position: Optional[str] = None
-    positionText: Optional[str] = None
-    points: str
-    wins: str
-    Driver: DriverModel
-    Constructors: list[TeamModel]
+    driver_api_id: str
+    season_api_id: str
+    round_api_id: str
+    year: int
+    round_number: int
+    position: Optional[int] = None
+    points: float        # float: handles 0.5 bonus points
+    wins: int
+
+    @computed_field
+    def api_id(self) -> str:
+        # e.g. "2023_5_max_verstappen"
+        return f"{self.round_api_id}_{self.driver_api_id}"
+
