@@ -255,27 +255,27 @@ def fetch_all_standings() -> tuple[list[TeamChampionshipModel], list[DriverChamp
         total_rounds = int(raw_total) if raw_total else 0
 
         for round_num in range(1, total_rounds + 1):
-            ── Constructor standings 
-            c_resp = _get_with_retry(
-                f"{BASE_URL}/{year}/{round_num}/constructorstandings.json",
-                params={"limit": 100},
-            )
-            c_standings_list = c_resp.json()["MRData"]["StandingsTable"]["StandingsLists"]
+            # ── Constructor standings 
+            # c_resp = _get_with_retry(
+            #     f"{BASE_URL}/{year}/{round_num}/constructorstandings.json",
+            #     params={"limit": 100},
+            # )
+            # c_standings_list = c_resp.json()["MRData"]["StandingsTable"]["StandingsLists"]
 
-            if c_standings_list:
-                for entry in c_standings_list[0]["ConstructorStandings"]:
-                    constructor_standings.append(
-                        TeamChampionshipModel(
-                            team_api_id=entry["Constructor"]["constructorId"],
-                            season_api_id=str(year),
-                            round_api_id=f"{year}_{round_num}",
-                            year=year,
-                            round_number=round_num,
-                            position=int(entry["position"]) if entry.get("position") else None,
-                            points=float(entry["points"]) if entry.get("points") else 0.0,
-                            win_count=int(entry["wins"]) if entry.get("wins") else 0,
-                        )
-                    )
+            # if c_standings_list:
+            #     for entry in c_standings_list[0]["ConstructorStandings"]:
+            #         constructor_standings.append(
+            #             TeamChampionshipModel(
+            #                 team_api_id=entry["Constructor"]["constructorId"],
+            #                 season_api_id=str(year),
+            #                 round_api_id=f"{year}_{round_num}",
+            #                 year=year,
+            #                 round_number=round_num,
+            #                 position=int(entry["position"]) if entry.get("position") else None,
+            #                 points=float(entry["points"]) if entry.get("points") else 0.0,
+            #                 win_count=int(entry["wins"]) if entry.get("wins") else 0,
+            #             )
+            #         )
 
             # ── Driver standings 
             d_resp = _get_with_retry(
