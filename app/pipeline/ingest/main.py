@@ -1,9 +1,9 @@
-import os
-import psycopg
 from dotenv import load_dotenv
 load_dotenv()
 
-from ingest_tables_raw import (
+from core.database import get_connection
+
+from app.pipeline.ingest.ingest_tables_raw import (
     fetch_drivers,
     fetch_seasons,
     insert_seasons,
@@ -23,12 +23,10 @@ from ingest_tables_raw import (
     insert_driver_championship,
     )
 
-from derive_tables import expand_sessions, ingest_sessions
+from app.pipeline.ingest.derive_tables import expand_sessions, ingest_sessions
 
 def fetch_and_fill_schema():
-    db_url = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
-
-    with psycopg.connect(db_url) as conn:
+    with get_connection() as conn:
         
         # drivers = fetch_drivers()
         # insert_drivers(conn, drivers)
@@ -71,4 +69,5 @@ def fetch_and_fill_schema():
         print(f"Inserted {len(driver_standings)} Driver Standings Entries")
 
 
-fetch_and_fill_schema()
+if __name__ == "__main__":
+    fetch_and_fill_schema()

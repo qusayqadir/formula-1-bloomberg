@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from models import (
+from app.pipeline.ingest.models import (
     DriverModel,
     RoundModel,
     SessionModel,

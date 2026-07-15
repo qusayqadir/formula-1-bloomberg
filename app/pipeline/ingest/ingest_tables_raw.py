@@ -1,18 +1,10 @@
-from copyreg import constructor
-from curses import termname
-from math import e
 import os
-from sqlite3 import Time
 import time
-from tkinter import INSERT
 from typing import Optional
-from httpx import Response
 import requests
 from datetime import datetime
 
-from sqlalchemy.sql.selectable import TextAsFrom
-
-from models import (
+from app.pipeline.ingest.models import (
     CircuitModel,
     DriverModel,
     SessionEntryModel,
