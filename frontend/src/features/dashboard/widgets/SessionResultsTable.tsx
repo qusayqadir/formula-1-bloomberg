@@ -10,7 +10,7 @@ import { useFilters } from "@/state/filters";
 import { focusRound, roundsFromResults, rowsForRound, visibleDriverIds } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { durationToSeconds, formatLapTime, formatPoints, sanitizeLapSeconds, shortRoundName } from "@/lib/format";
-import type { SessionResult } from "@/lib/types";
+import type { SessionResult, SessionType } from "@/lib/types";
 
 type SortKey = "position" | "grid" | "points" | "laps_completed" | "fastest_lap" | "delta";
 
@@ -39,10 +39,15 @@ function sortValue(row: SessionResult, key: SortKey): number {
   }
 }
 
-export function SessionResultsTable(props: { entities: SeasonEntities; className?: string }) {
+export function SessionResultsTable(props: {
+  entities: SeasonEntities;
+  className?: string;
+  sessionType?: SessionType;
+}) {
   const { filters, toggleDriver } = useFilters();
+  const session = props.sessionType ?? filters.sessionType;
   const { t } = useChartTheme();
-  const query = useSeasonResults(filters.year, filters.sessionType);
+  const query = useSeasonResults(filters.year, session);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "position", dir: 1 });
 
   const rounds = useMemo(() => roundsFromResults(query.data?.items), [query.data]);
@@ -73,15 +78,15 @@ export function SessionResultsTable(props: { entities: SeasonEntities; className
 
   return (
     <AnalyticsCard
-      eyebrow="Session · Classification"
-      title={shortRoundName(roundName) || "Session results"}
-      subtitle={round ? `R${round} · ${filters.sessionType} · ${filters.year}` : String(filters.year)}
+      eyebrow={`${session} · Classification`}
+      title={shortRoundName(roundName) || `${session} results`}
+      subtitle={round ? `R${round} · ${session} · ${filters.year}` : String(filters.year)}
       loading={query.isPending}
       refreshing={query.isFetching && !query.isPending}
       error={query.error as Error | null}
       onRetry={() => query.refetch()}
       empty={!query.isPending && !query.error && rows.length === 0}
-      emptyText={`No ${filters.sessionType} entries for this selection — only Race sessions have ingested results so far.`}
+      emptyText={`No ${session} entries for this selection — only Race sessions have ingested results so far.`}
       expandable
       className={props.className}
       bodyClassName="overflow-auto"

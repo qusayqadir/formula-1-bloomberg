@@ -4,6 +4,35 @@ import type { EChartsOption } from "echarts";
 
 export type EChartEvents = Record<string, (params: any) => void>;
 
+/** Dither-kit look: ordered-dither dot decal laid over every series fill
+ *  (bars, areas, pies, heat cells). Semi-transparent black reads as a
+ *  halftone on colored fills in both themes; lines/symbols are unaffected. */
+const DITHER_ARIA: EChartsOption["aria"] = {
+  enabled: true,
+  label: { enabled: false },
+  decal: {
+    show: true,
+    decals: [
+      {
+        symbol: "circle",
+        symbolSize: 0.6,
+        color: "rgba(0,0,0,0.28)",
+        dashArrayX: [1, 0],
+        dashArrayY: [2, 5],
+        rotation: 0,
+      },
+      {
+        symbol: "circle",
+        symbolSize: 0.6,
+        color: "rgba(0,0,0,0.28)",
+        dashArrayX: [1, 0],
+        dashArrayY: [4, 3],
+        rotation: Math.PI / 6,
+      },
+    ],
+  },
+};
+
 interface Props {
   option: EChartsOption;
   events?: EChartEvents;
@@ -45,7 +74,7 @@ export function EChart({ option, events, className, chartKey }: Props) {
   }, [chartKey]);
 
   useEffect(() => {
-    chartRef.current?.setOption(option, { notMerge: true });
+    chartRef.current?.setOption({ aria: DITHER_ARIA, ...option }, { notMerge: true });
   }, [option, chartKey]);
 
   return <div ref={nodeRef} className={className ?? "h-full w-full"} />;

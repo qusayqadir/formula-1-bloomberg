@@ -1,7 +1,8 @@
 import { RotateCcw } from "lucide-react";
-import { Chip, MultiSelect, Select } from "@/components/ui/controls";
+import { Chip, MultiSelect } from "@/components/ui/controls";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { DitherButton } from "@/components/dither-kit";
 import { useFilters } from "@/state/filters";
-import type { SessionType } from "@/lib/types";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { shortRoundName } from "@/lib/format";
 
@@ -9,16 +10,6 @@ export interface RoundOption {
   number: number;
   name: string | null;
 }
-
-const SESSION_TYPES: { value: SessionType; label: string }[] = [
-  { value: "Race", label: "Race" },
-  { value: "Qualifying", label: "Qualifying" },
-  { value: "Sprint", label: "Sprint" },
-  { value: "SprintQualifying", label: "Sprint Quali" },
-  { value: "FP1", label: "FP1" },
-  { value: "FP2", label: "FP2" },
-  { value: "FP3", label: "FP3" },
-];
 
 /** Sticky global filter row — every widget below re-renders against this
  *  slice. Chart interactions that commit filters surface here as chips. */
@@ -62,34 +53,42 @@ export function FilterBar(props: { rounds: RoundOption[]; entities: SeasonEntiti
   }
 
   return (
-    <div className="sticky top-0 z-30 -mx-4 border-b border-stroke bg-bg/90 px-4 py-2 backdrop-blur-md">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Select
-          label="Season"
-          value={filters.year}
-          numeric
-          options={[...years].reverse().map((y) => ({ value: y, label: String(y) }))}
-          onChange={(year) => set({ year })}
-        />
-        <Select
-          label="Round"
-          value={filters.round ?? 0}
-          numeric
-          options={[
-            { value: 0, label: "Latest" },
-            ...rounds.map((r) => ({
-              value: r.number,
-              label: `R${r.number} · ${shortRoundName(r.name) || r.number}`,
-            })),
-          ]}
-          onChange={(n) => set({ round: n === 0 ? null : n })}
-        />
-        <Select
-          label="Session"
-          value={filters.sessionType}
-          options={SESSION_TYPES}
-          onChange={(sessionType) => set({ sessionType: sessionType as SessionType })}
-        />
+    <div className="sticky top-0 z-30 -mx-5 border-b border-stroke bg-bg/90 px-5 py-2 backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <label className="flex items-center gap-1.5">
+          <span className="eyebrow !text-mut">Season</span>
+          <NativeSelect
+            size="sm"
+            aria-label="Season"
+            value={filters.year}
+            onChange={(e) => set({ year: Number(e.target.value) })}
+          >
+            {[...years].reverse().map((y) => (
+              <NativeSelectOption key={y} value={y}>
+                {y}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </label>
+        <label className="flex items-center gap-1.5">
+          <span className="eyebrow !text-mut">Round</span>
+          <NativeSelect
+            size="sm"
+            aria-label="Round"
+            value={filters.round ?? 0}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              set({ round: n === 0 ? null : n });
+            }}
+          >
+            <NativeSelectOption value={0}>Latest</NativeSelectOption>
+            {rounds.map((r) => (
+              <NativeSelectOption key={r.number} value={r.number}>
+                {`R${r.number} · ${shortRoundName(r.name) || r.number}`}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </label>
         <MultiSelect
           label="Drivers"
           placeholder="All drivers"
@@ -112,25 +111,29 @@ export function FilterBar(props: { rounds: RoundOption[]; entities: SeasonEntiti
           onClear={() => set({ teamIds: [] })}
         />
         {!isDefault && (
-          <button
+          <DitherButton
             onClick={reset}
-            className="flex h-7 items-center gap-1.5 rounded-md border border-transparent px-2 font-mono text-[10px] uppercase tracking-wider text-sub transition-colors hover:border-stroke hover:text-ink"
+            color="blue"
+            variant="gradient"
+            className="flex h-7 items-center gap-1.5 rounded-md px-2.5 font-mono text-[10px] uppercase tracking-wider"
           >
             <RotateCcw size={10} /> Reset
-          </button>
+          </DitherButton>
         )}
       </div>
       {chips.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
           {chips.map((c) => (
             <Chip key={c.key} label={c.label} swatch={c.swatch} onRemove={c.onRemove} />
           ))}
-          <button
+          <DitherButton
             onClick={reset}
-            className="h-6 rounded-full px-2 font-mono text-[10px] uppercase tracking-wider text-mut transition-colors hover:text-accent"
+            color="blue"
+            variant="dotted"
+            className="flex h-6 items-center rounded-full px-2.5 font-mono text-[10px] uppercase tracking-wider"
           >
             Clear all
-          </button>
+          </DitherButton>
         </div>
       )}
     </div>

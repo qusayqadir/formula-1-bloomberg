@@ -9,7 +9,7 @@ import { useFilters } from "@/state/filters";
 import { visibleDriverIds } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import type { CircuitSummaryRow } from "@/lib/types";
-import { seqColor } from "@/lib/colors";
+import { isDarkFill, seqColor } from "@/lib/colors";
 import { useChartTheme } from "@/components/charts/theme";
 import { formatNumber, formatPoints } from "@/lib/format";
 
@@ -119,11 +119,15 @@ export function CircuitMatrix(props: { entities: SeasonEntities; className?: str
                       {v != null ? (
                         <span
                           className="block rounded-sm px-1 py-0.5 text-center"
-                          style={{
-                            background: model.shade(v),
-                            color: t.heatLabel,
-                            textShadow: `0 1px 2px ${t.heatLabelBorder}`,
-                          }}
+                          style={(() => {
+                            const bg = model.shade(v);
+                            const dark = bg !== "transparent" && isDarkFill(bg);
+                            return {
+                              background: bg,
+                              color: dark ? "#f2f4f7" : "#16181d",
+                              textShadow: dark ? "0 1px 2px rgba(0,0,0,0.4)" : "none",
+                            };
+                          })()}
                         >
                           {model.spec.format(v)}
                         </span>

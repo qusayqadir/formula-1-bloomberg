@@ -1,18 +1,41 @@
-from anthropic import Anthropic 
+import os
+
 from dotenv import load_dotenv
+from langchain_anthropic import ChatAnthropic
+
+
 load_dotenv()
 
 
-client = Anthropic()
+def main() -> None:
+    model_name = os.getenv("ANTHROPIC_MODEL")
 
-message = client.messages.create(
-    model="claude-haiku-4-5-20251001",
-    max_tokens=1000,
-    messages=[{
-        "role" : "user",
-        "content" : "who are you"
-    }],
-    temperature=1.0
-)
+    if not model_name:
+        raise RuntimeError(
+            "Add ANTHROPIC_MODEL to your .env file."
+        )
 
-print(message.content[0].text)
+    model = ChatAnthropic(
+        model=model_name
+    )
+
+    print("F1 chatbot test")
+    print("Type 'exit' to stop.\n")
+
+    while True:
+        message = input("You: ").strip()
+
+        if message.lower() in {"exit", "quit"}:
+            break
+
+        if not message:
+            continue
+
+        response = model.invoke(message)
+
+        print(f"\nAssistant: {response.content}\n")
+
+
+if __name__ == "__main__":
+    main()
+

@@ -48,7 +48,7 @@ export function PointsShareArea(props: { className?: string }) {
       tooltip: {
         ...baseTooltip,
         trigger: "axis",
-        formatter: (ps: any[]) => {
+        formatter: (ps: any) => {
           const i = ps[0]?.dataIndex ?? 0;
           const lines = teams
             .map((t, ti) => ({ t, share: shares[ti][i], pts: t.cumulative[i] }))

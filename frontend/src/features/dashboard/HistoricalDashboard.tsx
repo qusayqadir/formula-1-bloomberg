@@ -15,6 +15,10 @@ import { ConsistencyBox } from "@/features/dashboard/widgets/ConsistencyBox";
 import { ReliabilityMatrix } from "@/features/dashboard/widgets/ReliabilityMatrix";
 import { TeammateDelta } from "@/features/dashboard/widgets/TeammateDelta";
 import { CircuitRacecraft } from "@/features/dashboard/widgets/CircuitRacecraft";
+import { PointsShareArea } from "@/features/dashboard/widgets/PointsShareArea";
+import { SeasonSunburst } from "@/features/dashboard/widgets/SeasonSunburst";
+import { HorizonDeltas } from "@/features/dashboard/widgets/HorizonDeltas";
+import { GridFinishHexbin } from "@/features/dashboard/widgets/GridFinishHexbin";
 import { CircuitMap } from "@/features/dashboard/widgets/CircuitMap";
 import { CircuitMatrix } from "@/features/dashboard/widgets/CircuitMatrix";
 
@@ -26,9 +30,9 @@ export function HistoricalDashboard() {
   const rounds = useMemo(() => roundsFromResults(results.data?.items), [results.data]);
 
   return (
-    <div className="px-4 pb-6">
+    <div className="px-5 pb-10">
       {/* compact workspace header */}
-      <header className="flex flex-wrap items-end justify-between gap-2 py-3">
+      <header className="flex flex-wrap items-end justify-between gap-2 py-4">
         <div>
           <p className="eyebrow">Home / Analytics / Historical</p>
           <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-ink">
@@ -59,18 +63,36 @@ export function HistoricalDashboard() {
       <FilterBar rounds={rounds} entities={entities} />
 
       {/* bento grid */}
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-12">
+      <div className="mt-4 grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-12">
         <ChampionshipProgression kind="drivers" entities={entities} className="h-[360px] md:col-span-1 xl:col-span-7" />
         <ChampionshipProgression kind="teams" entities={entities} className="h-[360px] md:col-span-1 xl:col-span-5" />
 
         <BumpChart entities={entities} className="h-[440px] md:col-span-2 xl:col-span-12" />
 
+        <PointsShareArea className="h-[380px] md:col-span-2 xl:col-span-7" />
+        <SeasonSunburst className="h-[380px] md:col-span-1 xl:col-span-5" />
+
         <SessionResultsTable entities={entities} className="h-[400px] md:col-span-2 xl:col-span-5" />
         <GridFinishSlope entities={entities} className="h-[400px] md:col-span-1 xl:col-span-4" />
         <FastestLapGap entities={entities} className="h-[400px] md:col-span-1 xl:col-span-3" />
 
+        {/* qualifying — results + gap to fastest (data lands with the quali ingest) */}
+        <SessionResultsTable entities={entities} sessionType="Qualifying" className="h-[400px] md:col-span-2 xl:col-span-8" />
+        <FastestLapGap entities={entities} sessionType="Qualifying" className="h-[400px] md:col-span-2 xl:col-span-4" />
+
+        {/* sprint — results + grid→finish + gap to fastest */}
+        <SessionResultsTable entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-2 xl:col-span-5" />
+        <GridFinishSlope entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-1 xl:col-span-4" />
+        <FastestLapGap entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-1 xl:col-span-3" />
+
+        {/* sprint qualifying — results */}
+        <SessionResultsTable entities={entities} sessionType="SprintQualifying" className="h-[400px] md:col-span-2 xl:col-span-12" />
+
         <ResultsHeatmap entities={entities} className="h-[460px] md:col-span-2 xl:col-span-8" />
         <HeadToHead entities={entities} className="h-[460px] md:col-span-2 xl:col-span-4" />
+
+        <HorizonDeltas entities={entities} className="h-[560px] md:col-span-2 xl:col-span-7" />
+        <GridFinishHexbin className="h-[560px] md:col-span-2 xl:col-span-5" />
 
         <ConsistencyBox entities={entities} className="h-[400px] md:col-span-2 xl:col-span-7" />
         <ReliabilityMatrix entities={entities} className="h-[400px] md:col-span-2 xl:col-span-5" />

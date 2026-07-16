@@ -10,12 +10,18 @@ import { useFilters } from "@/state/filters";
 import { focusRound, roundsFromResults, rowsForRound, visibleDriverIds } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { driverCode, shortRoundName } from "@/lib/format";
+import type { SessionType } from "@/lib/types";
 
-export function GridFinishSlope(props: { entities: SeasonEntities; className?: string }) {
+export function GridFinishSlope(props: {
+  entities: SeasonEntities;
+  className?: string;
+  sessionType?: SessionType;
+}) {
   const { filters } = useFilters();
+  const session = props.sessionType ?? filters.sessionType;
   const C = useChartTheme();
   const { t, axisLabel, baseTooltip } = C;
-  const query = useSeasonResults(filters.year, filters.sessionType);
+  const query = useSeasonResults(filters.year, session);
   const rounds = useMemo(() => roundsFromResults(query.data?.items), [query.data]);
   const round = focusRound(rounds, filters);
   const roundName = rounds.find((r) => r.number === round)?.name;
@@ -95,7 +101,7 @@ export function GridFinishSlope(props: { entities: SeasonEntities; className?: s
 
   return (
     <AnalyticsCard
-      eyebrow="Session · Grid vs finish"
+      eyebrow={`${session} · Grid vs finish`}
       title="Grid → Finish"
       subtitle={round ? `R${round} ${shortRoundName(roundName)}` : undefined}
       loading={query.isPending}

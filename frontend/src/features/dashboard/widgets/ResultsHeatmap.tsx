@@ -11,6 +11,7 @@ import { useSeasonResults } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import { filteredSeasonRows, roundsFromResults } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
+import { isDarkFill, seqColor } from "@/lib/colors";
 import { durationToSeconds, sanitizeLapSeconds, shortRoundName } from "@/lib/format";
 import type { SessionResult } from "@/lib/types";
 
@@ -141,14 +142,25 @@ export function ResultsHeatmap(props: { entities: SeasonEntities; className?: st
       series: [
         {
           type: "heatmap",
-          data: model.cells.length ? cells : [],
+          // per-cell label ink: the ramp spans light→dark, so one label
+          // color can't survive both ends — pick by the cell's own fill.
+          data: cells.map(([x, y, v]) => {
+            const tNorm = max === min ? 0.5 : (v - min) / (max - min);
+            const fill = seqColor(spec.lowerIsBetter ? 1 - tNorm : tNorm, t.seqRamp);
+            const dark = isDarkFill(fill);
+            return {
+              value: [x, y, v],
+              label: {
+                color: dark ? "#f2f4f7" : "#16181d",
+                textBorderColor: dark ? "rgba(0,0,0,0.35)" : "transparent",
+              },
+            };
+          }),
           itemStyle: { borderColor: t.surface, borderWidth: 2, borderRadius: 2 },
           label: {
             show: rounds.length <= 26 && drivers.length <= 24,
             fontSize: 8.5,
             fontFamily: MONO,
-            color: t.heatLabel,
-            textBorderColor: t.heatLabelBorder,
             textBorderWidth: 1.5,
             formatter: (p: any) => String(p.value[2]),
           },

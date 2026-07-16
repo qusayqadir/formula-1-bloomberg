@@ -167,6 +167,14 @@ export function seqColor(t: number, ramp: readonly string[] = SEQ_RAMP): string 
   return mixHex(ramp[i], ramp[i + 1], pos - i);
 }
 
+/** True when text on this fill needs to be light (fill is dark). */
+export function isDarkFill(hex: string): boolean {
+  const v = parseInt(hex.slice(1), 16);
+  const lum =
+    0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255);
+  return lum < 140;
+}
+
 /** hex → rgba() for translucent fills that keep the identity hue. */
 export function withAlpha(hex: string, alpha: number): string {
   const v = parseInt(hex.slice(1), 16);

@@ -3,21 +3,24 @@
  *  singleton, so putting it in a useMemo dependency list re-renders the
  *  chart exactly once per theme flip. Marks stay thin (2px lines, capped
  *  bars); grid/axes stay recessive in both modes. */
+import type { LegendComponentOption, TooltipComponentOption } from "echarts";
 import { CHART_DARK, CHART_LIGHT, type ChartTokens } from "@/lib/colors";
 import { useTheme, type ThemeMode } from "@/state/theme";
 
 export const MONO = '"JetBrains Mono Variable", ui-monospace, monospace';
-export const SANS = '"Wix Madefor Text Variable", system-ui, sans-serif';
+export const SANS = '"SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif';
 
 export interface ChartChrome {
   mode: ThemeMode;
   t: ChartTokens;
   axisLabel: { color: string; fontSize: number; fontFamily: string };
-  baseTooltip: Record<string, unknown>;
+  baseTooltip: TooltipComponentOption;
   baseGrid: { left: number; right: number; top: number; bottom: number; containLabel: boolean };
-  legendStyle: Record<string, unknown>;
-  categoryAxis: (data: (string | number)[], overrides?: object) => object;
-  valueAxis: (overrides?: object) => object;
+  legendStyle: LegendComponentOption;
+  /* axis helpers return `any` on purpose: the same fragment feeds x- and
+   * y-axis slots, whose ECharts option types are distinct. */
+  categoryAxis: (data: (string | number)[], overrides?: object) => any;
+  valueAxis: (overrides?: object) => any;
 }
 
 function build(mode: ThemeMode, t: ChartTokens): ChartChrome {

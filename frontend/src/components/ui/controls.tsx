@@ -102,7 +102,7 @@ export function MultiSelect(props: {
           {props.selected.length > 0 && (
             <button
               onClick={props.onClear}
-              className="w-full px-2.5 py-1.5 text-left font-mono text-[10px] uppercase tracking-wider text-accent hover:bg-white/5"
+              className="w-full px-2.5 py-1.5 text-left font-mono text-[10px] uppercase tracking-wider text-accent hover:bg-ink/5"
             >
               Clear selection
             </button>
@@ -115,7 +115,7 @@ export function MultiSelect(props: {
                 role="option"
                 aria-selected={active}
                 onClick={() => props.onToggle(o.value)}
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-ink hover:bg-white/5"
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-ink hover:bg-ink/5"
               >
                 {o.swatch && (
                   <span
@@ -178,7 +178,7 @@ export function Chip(props: { label: string; onRemove: () => void; swatch?: stri
       <button
         onClick={props.onRemove}
         aria-label={`Remove filter ${props.label}`}
-        className="grid h-4 w-4 place-items-center rounded-full text-mut transition-colors hover:bg-white/10 hover:text-ink"
+        className="grid h-4 w-4 place-items-center rounded-full text-mut transition-colors hover:bg-ink/10 hover:text-ink"
       >
         ×
       </button>

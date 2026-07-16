@@ -56,9 +56,24 @@ app/
 frontend/        # Vite + React + TS dashboard (Tailwind v4, TanStack Query, ECharts)
   src/
     lib/         # api client, DTO types, query hooks, formatting, data colors
-    state/       # URL-synced dashboard filter state
+    state/       # URL-synced dashboard filter state + theme (dark/light) provider
     components/  # shell (sidebar), ui (AnalyticsCard, controls), charts (EChart wrapper)
     features/dashboard/  # Historical Dashboard page, entities, selectors, widgets/
+    pages/       # ComingSoon stubs, DocsApis, DocsArchitecture, Creator
+
+### Theming (dark + light)
+
+- CSS tokens live on `:root[data-theme=…]` in `styles/index.css`; Tailwind reads
+  them via `@theme inline`, so `bg-surface`/`text-ink` etc. follow the toggle.
+- Charts can't read CSS vars (canvas): widgets call `useChartTheme()` from
+  `components/charts/theme.ts` and build ECharts options from the returned
+  bundle (`t` tokens + axis/tooltip/legend helpers), including it in their
+  useMemo deps. Both palettes are validated per surface (see lib/colors.ts).
+- Team identity colors are the SAME hex in both modes (brand-anchored);
+  overlay washes must use `ink`-based utilities (`bg-ink/[0.05]`), never
+  `bg-white/...`, so they work in both modes.
+- Fonts: Wix Madefor Text (UI), Wix Madefor Display, Lora (serif accents),
+  JetBrains Mono (data). Imported in main.tsx via @fontsource-variable.
 core/
   database.py    # psycopg connection helper (get_connection), reads DATABASE_URL from .env
   alembic/
