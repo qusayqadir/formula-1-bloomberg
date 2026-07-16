@@ -62,8 +62,9 @@ export function GridFinishSlope(props: {
         labelLayout: { moveOverlap: "shiftY" },
         tooltip: {
           formatter: () =>
-            `<b>${code}</b> — ${r.team_name}<br/>` +
-            `<span style="font-family:${MONO};font-size:10px">GRID P${r.grid} → FIN P${r.position} (${delta > 0 ? "+" : ""}${delta})</span>`,
+            C.tip(`${code} — ${r.team_name}`, [
+              C.tipRow("GRID → FIN", `P${r.grid} → P${r.position} (${delta > 0 ? "+" : ""}${delta})`),
+            ]),
         },
         data: [
           ["GRID", r.grid],

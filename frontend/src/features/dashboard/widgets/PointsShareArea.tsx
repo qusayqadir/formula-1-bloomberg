@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
-import { MONO, useChartTheme } from "@/components/charts/theme";
+import { useChartTheme } from "@/components/charts/theme";
 import { teamColor, withAlpha } from "@/lib/colors";
 import { useTeamProgression } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
@@ -53,14 +53,12 @@ export function PointsShareArea(props: { className?: string }) {
           const lines = teams
             .map((t, ti) => ({ t, share: shares[ti][i], pts: t.cumulative[i] }))
             .sort((a, b) => b.share - a.share)
-            .map(
-              ({ t, share, pts }) =>
-                `<span style="display:inline-block;width:7px;height:7px;border-radius:2px;` +
-                `background:${teamColor(t.entity)};margin-right:5px"></span>` +
-                `${t.entity.name} <span style="font-family:${MONO};font-size:10px">` +
-                `${share.toFixed(1)}% · ${pts} PTS</span>`,
+            .map(({ t, share, pts }) =>
+              C.tipRow(t.entity.name, `${share.toFixed(1)}% · ${pts} PTS`, {
+                swatch: teamColor(t.entity),
+              }),
             );
-          return `<b>R${rounds[i]}</b><br/>${lines.join("<br/>")}`;
+          return C.tip(`R${rounds[i]}`, lines);
         },
       },
       xAxis: categoryAxis(rounds.map((rn) => `R${rn}`)),

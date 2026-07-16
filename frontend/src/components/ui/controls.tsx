@@ -9,6 +9,80 @@ interface Option<V extends string | number> {
   swatch?: string;
 }
 
+/* Frosted-glass dropdown panel — same treatment as the chart tooltips
+ * (translucent raised fill + backdrop blur + light ink border). */
+const GLASS_PANEL =
+  "absolute left-0 top-8 z-40 max-h-72 overflow-y-auto rounded-md border border-ink/20 bg-raised/75 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.1)] backdrop-blur-sm";
+
+/** Single-select dropdown with the glass panel (native <select> popups are
+ *  OS-rendered and can't match the tooltip styling). */
+export function GlassSelect<V extends string | number>(props: {
+  label: string;
+  value: V;
+  options: Option<V>[];
+  onChange: (v: V) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const current = props.options.find((o) => o.value === props.value);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={props.label}
+        className="flex h-7 items-center gap-1.5 rounded-md border border-stroke bg-raised pl-2 pr-1.5 transition-colors hover:border-stroke-strong"
+      >
+        <span className="eyebrow !text-mut">{props.label}</span>
+        <span className="max-w-40 truncate font-mono text-[11px] font-medium text-ink">
+          {current?.label ?? String(props.value)}
+        </span>
+        <ChevronDown size={11} className="text-mut" />
+      </button>
+      {open && (
+        <div role="listbox" className={`${GLASS_PANEL} w-48`}>
+          {props.options.map((o) => {
+            const active = o.value === props.value;
+            return (
+              <button
+                key={o.value}
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  props.onChange(o.value);
+                  setOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11px] tabular-nums text-ink hover:bg-ink/10"
+              >
+                <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                {o.hint && <span className="font-mono text-[10px] text-sub">{o.hint}</span>}
+                {active && <Check size={12} className="flex-none text-accent" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Select<V extends string | number>(props: {
   label: string;
   value: V;
@@ -97,12 +171,12 @@ export function MultiSelect(props: {
         <div
           role="listbox"
           aria-multiselectable
-          className="absolute left-0 top-8 z-40 max-h-72 w-56 overflow-y-auto rounded-lg border border-stroke-strong bg-raised py-1 shadow-[var(--shadow-pop)]"
+          className={`${GLASS_PANEL} w-56`}
         >
           {props.selected.length > 0 && (
             <button
               onClick={props.onClear}
-              className="w-full px-2.5 py-1.5 text-left font-mono text-[10px] uppercase tracking-wider text-accent hover:bg-ink/5"
+              className="w-full px-2.5 py-1.5 text-left font-mono text-[10px] uppercase tracking-wider text-accent hover:bg-ink/10"
             >
               Clear selection
             </button>
@@ -115,17 +189,17 @@ export function MultiSelect(props: {
                 role="option"
                 aria-selected={active}
                 onClick={() => props.onToggle(o.value)}
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-ink hover:bg-ink/5"
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11px] tabular-nums text-ink hover:bg-ink/10"
               >
                 {o.swatch && (
                   <span
                     aria-hidden
-                    className="h-2 w-2 flex-none rounded-full"
+                    className="h-2 w-2 flex-none rounded-[1px]"
                     style={{ background: o.swatch }}
                   />
                 )}
                 <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                {o.hint && <span className="font-mono text-[10px] text-mut">{o.hint}</span>}
+                {o.hint && <span className="font-mono text-[10px] text-sub">{o.hint}</span>}
                 {active && <Check size={12} className="flex-none text-accent" />}
               </button>
             );

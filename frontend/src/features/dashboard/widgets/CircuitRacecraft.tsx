@@ -60,13 +60,13 @@ export function CircuitRacecraft(props: { className?: string }) {
         formatter: (p: any) => {
           const r = rows[p.dataIndex];
           if (!r) return "";
-          return (
-            `<b>${r.circuit_name}</b><br/>` +
-            `<span style="font-family:${MONO};font-size:10px">` +
-            `${r.races} RACES · POLE→WIN ${Math.round((r.pole_win_rate ?? 0) * 100)}% (${r.pole_wins}/${r.pole_starts})<br/>` +
-            `FRONT ROW→WIN ${Math.round((r.front_row_win_rate ?? 0) * 100)}% · WINNER AVG GRID P${(r.winner_avg_grid ?? 0).toFixed(1)}<br/>` +
-            `AVG SHUFFLE ${(r.avg_abs_position_change ?? 0).toFixed(2)} PLACES / FINISHER</span>`
-          );
+          return C.tip(r.circuit_name, [
+            C.tipRow("RACES", `${r.races}`),
+            C.tipRow("POLE→WIN", `${Math.round((r.pole_win_rate ?? 0) * 100)}% (${r.pole_wins}/${r.pole_starts})`),
+            C.tipRow("FRONT ROW→WIN", `${Math.round((r.front_row_win_rate ?? 0) * 100)}%`),
+            C.tipRow("WINNER AVG GRID", `P${(r.winner_avg_grid ?? 0).toFixed(1)}`),
+            C.tipRow("AVG SHUFFLE", `${(r.avg_abs_position_change ?? 0).toFixed(2)} PL/FIN`),
+          ]);
         },
       },
       xAxis: valueAxis({

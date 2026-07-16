@@ -94,7 +94,7 @@ export function Sidebar(props: {
       {/* file-tree navigation */}
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
         <FileTree
-          defaultExpanded={new Set(["terminal", "docs"])}
+          defaultExpanded={new Set(["terminal", "chat", "docs"])}
           selectedPath={location.pathname}
           onSelect={handleSelect}
         >
@@ -104,8 +104,6 @@ export function Sidebar(props: {
             <FileTreeFile name="Calendar" path="/calendar" icon={CalendarDays} />
             <FileTreeFile name="Track Walk" path="/track-walk" icon={Footprints} />
             <FileTreeFile name="Team Profiles" path="/teams" icon={Users} />
-            <FileTreeFile name="Chat" path="/chat" icon={MessageSquare} />
-            <FileTreeFile name="Archived" path="/archived" icon={Archive} />
             <FileTreeFile
               name="Live Dashboard"
               path="/live"
@@ -116,6 +114,10 @@ export function Sidebar(props: {
                 </span>
               }
             />
+          </FileTreeFolder>
+          <FileTreeFolder name="chat" path="chat">
+            <FileTreeFile name="Chat" path="/chat" icon={MessageSquare} />
+            <FileTreeFile name="Archived" path="/archived" icon={Archive} />
           </FileTreeFolder>
           <FileTreeFolder name="docs" path="docs">
             <FileTreeFile name="Backend APIs" path="/docs/apis" icon={TerminalSquare} />

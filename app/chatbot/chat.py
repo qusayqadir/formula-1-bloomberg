@@ -2,12 +2,21 @@ import os
 
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
+from langgraph.graph import (
+    START, 
+    END, 
+    StateGraph
+)
 
+
+import graph 
 
 load_dotenv()
 
 
 def main() -> None:
+
+    
     model_name = os.getenv("ANTHROPIC_MODEL")
 
     if not model_name:
@@ -15,7 +24,7 @@ def main() -> None:
             "Add ANTHROPIC_MODEL to your .env file."
         )
 
-    model = ChatAnthropic(
+    client = ChatAnthropic(
         model=model_name
     )
 
@@ -31,7 +40,7 @@ def main() -> None:
         if not message:
             continue
 
-        response = model.invoke(message)
+        response = client.invoke(message)
 
         print(f"\nAssistant: {response.content}\n")
 

@@ -37,10 +37,10 @@ export function GridFinishHexbin(props: { className?: string }) {
           if (!Array.isArray(p.value)) return "";
           const [g, pos, count] = p.value as [number, number, number];
           const share = ((count / (gridTotals.get(g) ?? 1)) * 100).toFixed(0);
-          return (
-            `<b>GRID P${g} → FIN P${pos}</b><br/>` +
-            `<span style="font-family:${MONO};font-size:10px">${count} RACES · ${share}% OF P${g} STARTS</span>`
-          );
+          return C.tip(`GRID P${g} → FIN P${pos}`, [
+            C.tipRow("RACES", `${count}`),
+            C.tipRow(`OF P${g} STARTS`, `${share}%`),
+          ]);
         },
       },
       xAxis: valueAxis({

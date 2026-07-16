@@ -101,6 +101,22 @@ export function ChampionshipProgression(props: {
         axisPointer: { type: "line", lineStyle: { color: t.labelDim } },
         order: inverse ? "valueAsc" : "valueDesc",
         confine: true,
+        formatter: (ps: any) => {
+          const items = (Array.isArray(ps) ? ps : [ps])
+            .filter((p: any) => p.value?.[1] != null)
+            .sort((a: any, b: any) =>
+              inverse ? a.value[1] - b.value[1] : b.value[1] - a.value[1],
+            );
+          if (!items.length) return "";
+          return C.tip(
+            items[0].data?.name ?? items[0].axisValueLabel,
+            items.map((p: any) =>
+              C.tipRow(p.seriesName, inverse ? `P${p.value[1]}` : `${p.value[1]}`, {
+                swatch: p.color,
+              }),
+            ),
+          );
+        },
       },
       xAxis: categoryAxis(rounds, { boundaryGap: false }),
       yAxis: valueAxis(

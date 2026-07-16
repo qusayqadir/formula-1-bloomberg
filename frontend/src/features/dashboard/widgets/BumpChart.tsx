@@ -99,7 +99,7 @@ export function BumpChart(props: { entities: SeasonEntities; className?: string 
         ...baseTooltip,
         trigger: "item",
         formatter: (p: any) =>
-          `<span style="font-family:${MONO};font-size:10px;color:${t.inkSub}">${p.data.name}</span><br/><b>${p.seriesName}</b> — P${p.value[1]}`,
+          C.tip(p.data.name, [C.tipRow(p.seriesName, `P${p.value[1]}`, { swatch: p.color })]),
       },
       xAxis: categoryAxis(rounds, { boundaryGap: false }),
       yAxis: {

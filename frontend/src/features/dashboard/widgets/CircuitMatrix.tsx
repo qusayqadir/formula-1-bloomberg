@@ -9,7 +9,7 @@ import { useFilters } from "@/state/filters";
 import { visibleDriverIds } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import type { CircuitSummaryRow } from "@/lib/types";
-import { isDarkFill, seqColor } from "@/lib/colors";
+import { isDarkFill, seqColor, withAlpha } from "@/lib/colors";
 import { useChartTheme } from "@/components/charts/theme";
 import { formatNumber, formatPoints } from "@/lib/format";
 
@@ -52,10 +52,14 @@ export function CircuitMatrix(props: { entities: SeasonEntities; className?: str
     const values = rows.map(value).filter((v): v is number => v != null);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    const shade = (v: number | null) => {
-      if (v == null || max === min) return "transparent";
+    /* Fill fades with value so weak cells recede into the surface instead of
+     * reading as a wall of pills; sqrt eases the skew (one dominant driver
+     * would otherwise flatten everyone else to the bottom of the ramp). */
+    const shade = (v: number | null): { bg: string; strength: number } | null => {
+      if (v == null || max === min) return null;
       const x = (v - min) / (max - min);
-      return seqColor(spec.lowerIsBetter ? 1 - x : x, t.seqRamp);
+      const strength = Math.sqrt(spec.lowerIsBetter ? 1 - x : x);
+      return { bg: seqColor(strength, t.seqRamp), strength };
     };
     return { circuits, driverOrder, byKey, shade, spec };
   }, [query.data, metric, props.entities, C]);
@@ -93,9 +97,9 @@ export function CircuitMatrix(props: { entities: SeasonEntities; className?: str
                 <th
                   key={c.id}
                   title={c.name}
-                  className="sticky top-0 z-10 max-w-16 truncate bg-surface px-1.5 py-1.5 text-left align-bottom text-[8.5px] font-semibold uppercase tracking-wider text-mut"
+                  className="sticky top-0 z-10 max-w-24 truncate bg-surface px-1.5 py-1.5 text-left align-bottom text-[8.5px] font-semibold uppercase tracking-wider text-mut"
                 >
-                  {c.name.replace(/(circuit|international|autodrome|autódromo|de |di )/gi, "").trim().slice(0, 9)}
+                  {c.name.replace(/(circuit|international|autodrome|autódromo|de |di )/gi, "").trim().slice(0, 14)}
                 </th>
               ))}
             </tr>
@@ -118,15 +122,20 @@ export function CircuitMatrix(props: { entities: SeasonEntities; className?: str
                     >
                       {v != null ? (
                         <span
-                          className="block rounded-sm px-1 py-0.5 text-center"
+                          className="block rounded-sm px-1 py-0.5 text-center text-ink"
                           style={(() => {
-                            const bg = model.shade(v);
-                            const dark = bg !== "transparent" && isDarkFill(bg);
-                            return {
-                              background: bg,
-                              color: dark ? "#f2f4f7" : "#16181d",
-                              textShadow: dark ? "0 1px 2px rgba(0,0,0,0.4)" : "none",
-                            };
+                            const s = model.shade(v);
+                            if (!s) return undefined;
+                            /* strong cells get the solid ramp color with
+                             * contrast-picked text; weak ones a translucent
+                             * wash with normal ink. */
+                            if (s.strength >= 0.55) {
+                              return {
+                                background: s.bg,
+                                color: isDarkFill(s.bg) ? "#f2f4f7" : "#16181d",
+                              };
+                            }
+                            return { background: withAlpha(s.bg, 0.12 + 0.7 * s.strength) };
                           })()}
                         >
                           {model.spec.format(v)}

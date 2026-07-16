@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
-import { MONO, useChartTheme } from "@/components/charts/theme";
+import { useChartTheme } from "@/components/charts/theme";
 import { teamColor, withAlpha } from "@/lib/colors";
 import { useTeamProgression } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
@@ -55,13 +55,13 @@ export function PointsStream(props: { className?: string }) {
             .map((t) => ({ t, pts: t.gained[i] }))
             .sort((a, b) => b.pts - a.pts)
             .filter(({ pts }) => pts > 0)
-            .map(
-              ({ t, pts }) =>
-                `<span style="display:inline-block;width:7px;height:7px;border-radius:2px;` +
-                `background:${teamColor(t.entity)};margin-right:5px"></span>` +
-                `${t.entity.name} <span style="font-family:${MONO};font-size:10px">+${pts}</span>`,
+            .map(({ t, pts }) =>
+              C.tipRow(t.entity.name, `+${pts}`, { swatch: teamColor(t.entity) }),
             );
-          return `<b>R${rounds[i]}</b><br/>${lines.join("<br/>") || "no points scored"}`;
+          return C.tip(
+            `R${rounds[i]}`,
+            lines.length ? lines : [C.tipRow("no points scored", "")],
+          );
         },
       },
       xAxis: categoryAxis(rounds.map((rn) => `R${rn}`), { boundaryGap: false }),

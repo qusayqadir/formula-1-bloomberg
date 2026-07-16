@@ -8,9 +8,11 @@ import { rgb } from "./palette"
 
 export type TooltipVariant = "default" | "frosted-glass"
 
+/* `popover` tokens don't exist in this Tailwind theme — use the app's raised
+ * surface so the card keeps contrast over bright marks. */
 const VARIANT: Record<TooltipVariant, string> = {
-  default: "bg-popover",
-  "frosted-glass": "bg-popover/70 backdrop-blur-sm",
+  default: "bg-raised",
+  "frosted-glass": "bg-raised/75 backdrop-blur-sm",
 }
 
 /**
@@ -21,7 +23,7 @@ const VARIANT: Record<TooltipVariant, string> = {
 export function Tooltip({
   labelKey,
   valueFormatter,
-  variant = "default",
+  variant = "frosted-glass",
 }: {
   labelKey?: string
   valueFormatter?: (value: number, name: string) => string
@@ -41,24 +43,35 @@ export function Tooltip({
   const heading = chart.heading(index, labelKey)
   const items = chart.itemsAt(index)
 
+  // Clamp the centered card inside its chart container so it never clips at
+  // the edges — the context's clamp is point-based and doesn't know our width.
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  let left = chart.tooltipLeft
+  const parent = el?.offsetParent as HTMLElement | null
+  if (el && parent) {
+    const half = el.offsetWidth / 2
+    left = Math.min(Math.max(left, half + 4), Math.max(half + 4, parent.clientWidth - half - 4))
+  }
+
   return (
     <AnimatePresence>
       {show && items.length > 0 && (
         <motion.div
           key="dither-tooltip"
+          ref={setEl}
           initial={{
             opacity: 0,
             x: "-50%",
             y: "-115%",
             top: chart.tooltipTop,
-            left: chart.tooltipLeft,
+            left,
           }}
           animate={{
             opacity: 1,
             x: "-50%",
             y: "-115%",
             top: chart.tooltipTop,
-            left: chart.tooltipLeft,
+            left,
           }}
           exit={{ opacity: 0 }}
           transition={{
@@ -73,7 +86,7 @@ export function Tooltip({
           )}
         >
           {heading && (
-            <div className="mb-0.5 font-mono text-[10px] text-muted-foreground">
+            <div className="mb-0.5 font-mono text-[10px] text-sub">
               {heading}
             </div>
           )}
@@ -81,15 +94,15 @@ export function Tooltip({
             {items.map((item) => (
               <div
                 key={item.name}
-                className="flex items-center gap-1.5 font-mono text-[11px] text-popover-foreground tabular-nums"
+                className="flex items-center gap-1.5 font-mono text-[11px] text-ink tabular-nums"
                 style={{ opacity: item.dimmed ? 0.4 : 1 }}
               >
                 <span
                   className="size-2 rounded-[1px]"
                   style={{ backgroundColor: rgb(item.seed.fill) }}
                 />
-                <span className="text-muted-foreground">{item.label}</span>
-                <span className="ml-auto pl-2 text-foreground">
+                <span className="text-sub">{item.label}</span>
+                <span className="ml-auto pl-2 text-ink">
                   {valueFormatter
                     ? valueFormatter(item.value, item.name)
                     : item.value.toLocaleString()}

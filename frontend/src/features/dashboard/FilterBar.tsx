@@ -1,6 +1,5 @@
 import { RotateCcw } from "lucide-react";
-import { Chip, MultiSelect } from "@/components/ui/controls";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Chip, GlassSelect, MultiSelect } from "@/components/ui/controls";
 import { DitherButton } from "@/components/dither-kit";
 import { useFilters } from "@/state/filters";
 import type { SeasonEntities } from "@/features/dashboard/entities";
@@ -55,40 +54,24 @@ export function FilterBar(props: { rounds: RoundOption[]; entities: SeasonEntiti
   return (
     <div className="sticky top-0 z-30 -mx-5 border-b border-stroke bg-bg/90 px-5 py-2 backdrop-blur-md">
       <div className="flex flex-wrap items-center justify-center gap-1.5">
-        <label className="flex items-center gap-1.5">
-          <span className="eyebrow !text-mut">Season</span>
-          <NativeSelect
-            size="sm"
-            aria-label="Season"
-            value={filters.year}
-            onChange={(e) => set({ year: Number(e.target.value) })}
-          >
-            {[...years].reverse().map((y) => (
-              <NativeSelectOption key={y} value={y}>
-                {y}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </label>
-        <label className="flex items-center gap-1.5">
-          <span className="eyebrow !text-mut">Round</span>
-          <NativeSelect
-            size="sm"
-            aria-label="Round"
-            value={filters.round ?? 0}
-            onChange={(e) => {
-              const n = Number(e.target.value);
-              set({ round: n === 0 ? null : n });
-            }}
-          >
-            <NativeSelectOption value={0}>Latest</NativeSelectOption>
-            {rounds.map((r) => (
-              <NativeSelectOption key={r.number} value={r.number}>
-                {`R${r.number} · ${shortRoundName(r.name) || r.number}`}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </label>
+        <GlassSelect
+          label="Season"
+          value={filters.year}
+          options={[...years].reverse().map((y) => ({ value: y, label: String(y) }))}
+          onChange={(y) => set({ year: y })}
+        />
+        <GlassSelect
+          label="Round"
+          value={filters.round ?? 0}
+          options={[
+            { value: 0, label: "Latest" },
+            ...rounds.map((r) => ({
+              value: r.number,
+              label: `R${r.number} · ${shortRoundName(r.name) || r.number}`,
+            })),
+          ]}
+          onChange={(n) => set({ round: n === 0 ? null : n })}
+        />
         <MultiSelect
           label="Drivers"
           placeholder="All drivers"

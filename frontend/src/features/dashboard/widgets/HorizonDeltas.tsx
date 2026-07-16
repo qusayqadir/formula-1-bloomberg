@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
-import { MONO, useChartTheme } from "@/components/charts/theme";
+import { useChartTheme } from "@/components/charts/theme";
 import { useSeasonResults } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import {
@@ -121,10 +121,9 @@ export function HorizonDeltas(props: { entities: SeasonEntities; className?: str
           const cell = d && cells.get(d.id)?.get(rn);
           if (!d || !cell) return "";
           const sign = cell.delta > 0 ? `+${cell.delta}` : `${cell.delta}`;
-          return (
-            `<b>${d.code}</b> — ${d.teamName}<br/>` +
-            `<span style="font-family:${MONO};font-size:10px">R${rn} · ${sign} PLACES (P${cell.grid} → P${cell.position})</span>`
-          );
+          return C.tip(`${d.code} — ${d.teamName}`, [
+            C.tipRow(`R${rn}`, `${sign} PLACES (P${cell.grid} → P${cell.position})`),
+          ]);
         },
       },
       grid: grids,

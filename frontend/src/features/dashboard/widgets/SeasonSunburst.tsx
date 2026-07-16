@@ -67,10 +67,10 @@ export function SeasonSunburst(props: { className?: string }) {
         ...baseTooltip,
         formatter: (p: any) => {
           const pct = ((p.value / seasonTotal) * 100).toFixed(1);
-          return (
-            `<b>${p.name}</b><br/>` +
-            `<span style="font-family:${MONO};font-size:10px">${p.value} PTS · ${pct}% OF SEASON</span>`
-          );
+          return C.tip(p.name, [
+            C.tipRow("PTS", `${p.value}`, { swatch: p.color }),
+            C.tipRow("OF SEASON", `${pct}%`),
+          ]);
         },
       },
       series: [

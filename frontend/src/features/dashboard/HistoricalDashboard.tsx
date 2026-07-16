@@ -19,7 +19,6 @@ import { PointsShareArea } from "@/features/dashboard/widgets/PointsShareArea";
 import { SeasonSunburst } from "@/features/dashboard/widgets/SeasonSunburst";
 import { HorizonDeltas } from "@/features/dashboard/widgets/HorizonDeltas";
 import { GridFinishHexbin } from "@/features/dashboard/widgets/GridFinishHexbin";
-import { CircuitMap } from "@/features/dashboard/widgets/CircuitMap";
 import { CircuitMatrix } from "@/features/dashboard/widgets/CircuitMatrix";
 
 export function HistoricalDashboard() {
@@ -100,8 +99,7 @@ export function HistoricalDashboard() {
         <TeammateDelta entities={entities} className="h-[380px] md:col-span-2 xl:col-span-7" />
         <CircuitRacecraft className="h-[380px] md:col-span-2 xl:col-span-5" />
 
-        <CircuitMap className="h-[380px] md:col-span-2 xl:col-span-7" />
-        <CircuitMatrix entities={entities} className="h-[380px] md:col-span-2 xl:col-span-5" />
+        <CircuitMatrix entities={entities} className="h-[420px] md:col-span-2 xl:col-span-12" />
       </div>
 
       <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-mut">

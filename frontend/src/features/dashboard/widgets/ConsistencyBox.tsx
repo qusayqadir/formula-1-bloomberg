@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
-import { MONO, useChartTheme } from "@/components/charts/theme";
+import { useChartTheme } from "@/components/charts/theme";
 import { withAlpha } from "@/lib/colors";
 import { useSeasonResults } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
@@ -86,12 +86,13 @@ export function ConsistencyBox(props: { entities: SeasonEntities; className?: st
           const b = boxes[p.dataIndex];
           if (!b) return "";
           const [min, q1, med, q3, max] = b.five;
-          return (
-            `<b>${b.code}</b> — ${b.teamName}<br/>` +
-            `<span style="font-family:${MONO};font-size:10px">` +
-            `MED P${med.toFixed(1)} · IQR P${q1.toFixed(1)}–P${q3.toFixed(1)} · RANGE P${min}–P${max}<br/>` +
-            `${b.n} CLASSIFIED · ${b.dnfs} DNF</span>`
-          );
+          return C.tip(`${b.code} — ${b.teamName}`, [
+            C.tipRow("MEDIAN", `P${med.toFixed(1)}`),
+            C.tipRow("IQR", `P${q1.toFixed(1)}–P${q3.toFixed(1)}`),
+            C.tipRow("RANGE", `P${min}–P${max}`),
+            C.tipRow("CLASSIFIED", `${b.n}`),
+            C.tipRow("DNF", `${b.dnfs}`),
+          ]);
         },
       },
       xAxis: {

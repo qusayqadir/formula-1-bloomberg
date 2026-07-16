@@ -3,27 +3,37 @@
 import { useMemo, useState } from "react";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { Select } from "@/components/ui/controls";
-import { useChartTheme } from "@/components/charts/theme";
+import { PALETTE, rgb } from "@/components/dither-kit/palette";
 import { useHeadToHead } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { durationToSeconds, formatNumber, formatPoints, sanitizeLapSeconds } from "@/lib/format";
 
-function TallyBar(props: { a: number; b: number; colorA: string; colorB: string }) {
+/** Fixed dither hues for the two sides — team colors would collide for
+ *  teammates, and these match the dither-kit charts around the card. */
+const SIDE_A = PALETTE.blue;
+const SIDE_B = PALETTE.red;
+
+/** Dithered 2px checker wash over the side hue, so the tally bars read as
+ *  part of the dither-kit family without a canvas. */
+const ditherFill = (fill: string, line: string) => ({
+  background: `repeating-conic-gradient(${line} 0% 25%, ${fill} 0% 50%) 0 0 / 4px 4px`,
+});
+
+function TallyBar(props: { a: number; b: number }) {
   const total = props.a + props.b;
   const pctA = total === 0 ? 50 : (props.a / total) * 100;
   return (
     <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-inset" aria-hidden>
-      <div style={{ width: `${pctA}%`, background: props.colorA }} />
+      <div style={{ width: `${pctA}%`, ...ditherFill(rgb(SIDE_A.fill), rgb(SIDE_A.fill, 1.25)) }} />
       <div className="w-0.5 flex-none bg-surface" />
-      <div className="flex-1" style={{ background: props.colorB }} />
+      <div className="flex-1" style={ditherFill(rgb(SIDE_B.fill), rgb(SIDE_B.fill, 1.25))} />
     </div>
   );
 }
 
 export function HeadToHead(props: { entities: SeasonEntities; className?: string }) {
   const { filters } = useFilters();
-  const { t } = useChartTheme();
   const drivers = props.entities.drivers;
   const [manual, setManual] = useState<{ a: number | null; b: number | null }>({ a: null, b: null });
 
@@ -97,7 +107,11 @@ export function HeadToHead(props: { entities: SeasonEntities; className?: string
         {[da, db].map((d, i) => (
           <div key={i} className={`min-w-0 ${i === 1 ? "text-right" : ""}`}>
             <p className="truncate text-[13px] font-semibold text-ink">
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-baseline" style={{ background: d?.color ?? t.neutral }} aria-hidden />
+              <span
+                className="mr-1.5 inline-block h-2 w-2 rounded-full align-baseline"
+                style={{ background: rgb((i === 0 ? SIDE_A : SIDE_B).fill) }}
+                aria-hidden
+              />
               {d?.code ?? "—"}
             </p>
             <p className="truncate font-mono text-[9px] uppercase tracking-wider text-mut">{d?.teamName ?? ""}</p>
@@ -123,9 +137,7 @@ export function HeadToHead(props: { entities: SeasonEntities; className?: string
                 <span className="text-center font-sans text-[10px] text-mut">{r.label}</span>
                 <span className={bBetter ? "font-semibold text-ink" : "text-sub"}>{r.b}</span>
               </div>
-              {r.tally && (
-                <TallyBar a={r.tally.a} b={r.tally.b} colorA={da?.color ?? t.neutral} colorB={db?.color ?? t.neutral} />
-              )}
+              {r.tally && <TallyBar a={r.tally.a} b={r.tally.b} />}
             </div>
           );
         })}

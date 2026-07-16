@@ -4,7 +4,7 @@
  *  chart exactly once per theme flip. Marks stay thin (2px lines, capped
  *  bars); grid/axes stay recessive in both modes. */
 import type { LegendComponentOption, TooltipComponentOption } from "echarts";
-import { CHART_DARK, CHART_LIGHT, type ChartTokens } from "@/lib/colors";
+import { CHART_DARK, CHART_LIGHT, withAlpha, type ChartTokens } from "@/lib/colors";
 import { useTheme, type ThemeMode } from "@/state/theme";
 
 export const MONO = '"JetBrains Mono Variable", ui-monospace, monospace';
@@ -21,21 +21,51 @@ export interface ChartChrome {
    * y-axis slots, whose ECharts option types are distinct. */
   categoryAxis: (data: (string | number)[], overrides?: object) => any;
   valueAxis: (overrides?: object) => any;
+  /* Tooltip HTML kit — mirrors the dither-kit <Tooltip> card (mono heading,
+   * swatch + muted label + right-aligned tabular value rows) so ECharts
+   * widgets and dither-kit widgets share one hover language. */
+  tipHeading: (text: string) => string;
+  tipRow: (
+    label: string,
+    value: string,
+    opts?: { swatch?: string; dimmed?: boolean },
+  ) => string;
+  tip: (heading: string | null, rows: string[]) => string;
 }
 
 function build(mode: ThemeMode, t: ChartTokens): ChartChrome {
   const axisLabel = { color: t.inkSub, fontSize: 10, fontFamily: MONO };
+  const tipHeading = (text: string) =>
+    `<div style="margin-bottom:2px;font-family:${MONO};font-size:10px;color:${t.inkSub}">${text}</div>`;
+  const tipRow = (
+    label: string,
+    value: string,
+    opts: { swatch?: string; dimmed?: boolean } = {},
+  ) =>
+    `<div style="display:flex;align-items:center;gap:6px;min-width:0;font-family:${MONO};font-size:11px;font-variant-numeric:tabular-nums;color:${t.ink};${opts.dimmed ? "opacity:.4;" : ""}">` +
+    (opts.swatch
+      ? `<span style="flex:none;width:8px;height:8px;border-radius:1px;background:${opts.swatch}"></span>`
+      : "") +
+    `<span style="color:${t.inkSub}">${label}</span>` +
+    `<span style="margin-left:auto;padding-left:8px">${value}</span></div>`;
+  const tip = (heading: string | null, rows: string[]) =>
+    `${heading ? tipHeading(heading) : ""}<div style="display:flex;flex-direction:column;gap:2px">${rows.join("")}</div>`;
   return {
     mode,
     t,
     axisLabel,
     baseTooltip: {
-      backgroundColor: t.raised,
-      borderColor: t.popBorder,
+      /* frosted-glass card (matches dither-kit <Tooltip>): near-transparent
+       * fill + backdrop blur + light ink border, soft shadow; confine keeps
+       * it on screen. */
+      backgroundColor: withAlpha(t.raised, 0.75),
+      borderColor: withAlpha(t.ink, 0.22),
       borderWidth: 1,
-      padding: [8, 10] as number[],
-      textStyle: { color: t.ink, fontSize: 11, fontFamily: SANS },
-      extraCssText: `box-shadow: ${t.tooltipShadow}; border-radius: 6px;`,
+      padding: [4, 8] as number[],
+      confine: true,
+      textStyle: { color: t.ink, fontSize: 11, fontFamily: MONO },
+      extraCssText:
+        "box-shadow: 0 1px 2px rgba(0,0,0,0.1); border-radius: 6px; font-variant-numeric: tabular-nums; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); line-height: 1.45;",
     },
     baseGrid: { left: 8, right: 16, top: 10, bottom: 4, containLabel: true },
     legendStyle: {
@@ -68,6 +98,9 @@ function build(mode: ThemeMode, t: ChartTokens): ChartChrome {
       splitLine: { lineStyle: { color: t.gridLine, width: 1, type: "solid" as const } },
       ...overrides,
     }),
+    tipHeading,
+    tipRow,
+    tip,
   };
 }
 

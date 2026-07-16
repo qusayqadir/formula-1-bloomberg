@@ -1,17 +1,17 @@
-/** Teammate gap — the intra-team benchmark. One bar per team: the average
- *  finishing-position gap between its two main drivers over rounds where
- *  BOTH took a classified finish (DNF retirement order never pollutes it).
- *  Bars wear the team identity color; the pair label carries who leads. */
+/** Teammate gap — the intra-team benchmark. One dithered bar per team: the
+ *  average finishing-position gap between its two main drivers over rounds
+ *  where BOTH took a classified finish (DNF retirement order never pollutes
+ *  it). The pair label carries who leads. */
 import { useMemo } from "react";
-import type { EChartsOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
-import { EChart } from "@/components/charts/EChart";
-import { MONO, useChartTheme } from "@/components/charts/theme";
+import { Bar, BarChart, Grid, Tooltip, XAxis, YAxis } from "@/components/dither-kit";
 import { useSeasonResults } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import { inRoundRange, statusBucket } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { driverCode } from "@/lib/format";
+
+const CONFIG = { gap: { label: "Avg finish gap", color: "purple" } } as const;
 
 interface PairRow {
   teamId: number;
@@ -27,8 +27,6 @@ interface PairRow {
 
 export function TeammateDelta(props: { entities: SeasonEntities; className?: string }) {
   const { filters } = useFilters();
-  const C = useChartTheme();
-  const { t, axisLabel, baseGrid, baseTooltip, valueAxis } = C;
   const query = useSeasonResults(filters.year, filters.sessionType);
 
   const pairs = useMemo<PairRow[]>(() => {
@@ -103,59 +101,14 @@ export function TeammateDelta(props: { entities: SeasonEntities; className?: str
     return result.sort((a, b) => b.gap - a.gap);
   }, [query.data, filters]);
 
-  const option = useMemo<EChartsOption | null>(() => {
-    if (!pairs.length) return null;
-    return {
-      animationDuration: 300,
-      grid: { ...baseGrid, right: 36 },
-      tooltip: {
-        ...baseTooltip,
-        trigger: "item",
-        formatter: (p: any) => {
-          const r = pairs[p.dataIndex];
-          return (
-            `<b>${r.teamName}</b><br/>` +
-            `<span style="font-family:${MONO};font-size:10px">` +
-            `${r.leaderCode} AVG P${r.avgLeader.toFixed(1)} · ${r.trailCode} AVG P${r.avgTrail.toFixed(1)}<br/>` +
-            `H2H ${r.leaderAhead}–${r.shared - r.leaderAhead} OVER ${r.shared} SHARED FINISHES</span>`
-          );
-        },
-      },
-      xAxis: valueAxis({
-        axisLabel: { ...axisLabel, formatter: (v: number) => v.toFixed(1) },
-      }),
-      yAxis: {
-        type: "category",
-        inverse: true,
-        data: pairs.map((r) => `${r.leaderCode} ▸ ${r.trailCode}`),
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { ...axisLabel, fontSize: 10 },
-      },
-      series: [
-        {
-          type: "bar",
-          barMaxWidth: 14,
-          data: pairs.map((r) => ({
-            value: r.gap,
-            itemStyle: {
-              color: props.entities.teamById.get(r.teamId)?.color ?? t.blue,
-              borderRadius: [0, 3, 3, 0],
-            },
-          })),
-          label: {
-            show: true,
-            position: "right",
-            distance: 4,
-            color: t.inkSub,
-            fontFamily: MONO,
-            fontSize: 9,
-            formatter: (p: any) => `+${pairs[p.dataIndex].gap.toFixed(1)}`,
-          },
-        },
-      ],
-    };
-  }, [pairs, props.entities, C]);
+  const rows = useMemo(
+    () =>
+      pairs.map((r) => ({
+        pair: `${r.leaderCode}▸${r.trailCode}`,
+        gap: Number(r.gap.toFixed(2)),
+      })),
+    [pairs],
+  );
 
   return (
     <AnalyticsCard
@@ -166,13 +119,21 @@ export function TeammateDelta(props: { entities: SeasonEntities; className?: str
       refreshing={query.isFetching && !query.isPending}
       error={query.error as Error | null}
       onRetry={() => query.refetch()}
-      empty={!query.isPending && !query.error && !option}
+      empty={!query.isPending && !query.error && rows.length === 0}
       emptyText="No teammate pair shares 3+ classified finishes in the current selection."
       expandable
       className={props.className}
-      bodyClassName="p-2"
+      bodyClassName="p-3"
     >
-      {option && <EChart option={option} />}
+      {rows.length > 0 && (
+        <BarChart data={rows} config={CONFIG} bloom="low">
+          <Grid />
+          <XAxis dataKey="pair" maxTicks={rows.length} tickFormatter={(v) => String(v).split("▸")[0]} />
+          <YAxis tickFormatter={(v) => v.toFixed(1)} />
+          <Tooltip labelKey="pair" valueFormatter={(v) => `+${v.toFixed(2)} avg positions`} />
+          <Bar dataKey="gap" variant="gradient" />
+        </BarChart>
+      )}
     </AnalyticsCard>
   );
 }

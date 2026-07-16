@@ -100,11 +100,9 @@ export function ResultsHeatmap(props: { entities: SeasonEntities; className?: st
         formatter: (p: any) => {
           const m = meta.get(`${p.value[0]}:${p.value[1]}`);
           const d = drivers[p.value[1]];
-          return (
-            `<b>${d.code}</b> — ${d.name}<br/>` +
-            `<span style="font-family:${MONO};font-size:10px;color:${t.inkSub}">${m?.round} · ${m?.circuit}</span><br/>` +
-            `${spec.label}: <b>${spec.lowerIsBetter ? `P${p.value[2]}` : p.value[2]}</b>`
-          );
+          return C.tip(`${d.code} — ${d.name} · ${m?.round} · ${m?.circuit}`, [
+            C.tipRow(spec.label, spec.lowerIsBetter ? `P${p.value[2]}` : `${p.value[2]}`),
+          ]);
         },
       },
       xAxis: {

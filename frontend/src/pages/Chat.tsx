@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUp, RotateCcw, X } from "lucide-react";
 import { useFilters } from "@/state/filters";
 import { ThinkingDots } from "@/components/ui/ThinkingDots";
+import { SiriOrb } from "@/components/ui/SiriOrb";
 
 interface Message {
   id: number;
@@ -179,10 +180,20 @@ export function ChatPage() {
             <button
               onClick={() => setComposerOpen(true)}
               aria-label="Ask a question"
-              className="flex h-12 items-center truncate whitespace-nowrap px-5 text-[13px] text-sub transition-colors hover:text-ink"
+              className="flex h-12 items-center gap-2 truncate whitespace-nowrap px-5 text-[13px] text-sub transition-colors hover:text-ink"
             >
-              {/* fade the label in only after the pill has shrunk, so no text
-                  is visible mid-collapse */}
+              {/* fade the orb+label in only after the pill has shrunk, so no
+                  content is visible mid-collapse; the orb only exists while
+                  the composer is closed */}
+              <motion.span
+                key="orb"
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.2 }}
+                className="flex items-center"
+              >
+                <SiriOrb size={20} />
+              </motion.span>
               <motion.span
                 key="label"
                 initial={{ opacity: 0 }}
