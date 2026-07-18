@@ -1,32 +1,17 @@
 import os
 
-from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langgraph.graph import (
     START, 
     END, 
     StateGraph
 )
-
-
-import graph 
-
-load_dotenv()
+from app.chatbot.core.models import answer_model
 
 
 def main() -> None:
 
-    
-    model_name = os.getenv("ANTHROPIC_MODEL")
-
-    if not model_name:
-        raise RuntimeError(
-            "Add ANTHROPIC_MODEL to your .env file."
-        )
-
-    client = ChatAnthropic(
-        model=model_name
-    )
+    client = answer_model
 
     print("F1 chatbot test")
     print("Type 'exit' to stop.\n")

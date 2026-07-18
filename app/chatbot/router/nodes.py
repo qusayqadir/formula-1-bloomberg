@@ -5,6 +5,7 @@ from langchain_anthropic import ChatAnthropic
 
 from app.chatbot.router.prompts import ROUTER_SYSTEM_PROMPT
 from app.chatbot.router.schemas import RouteDecision
+from app.chatbot.core.models import analysis_model
 from app.chatbot.router.state import RouterState
 
 
