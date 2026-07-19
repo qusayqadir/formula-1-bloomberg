@@ -1,31 +1,37 @@
-import os
-
-from dotenv import load_dotenv
-from langchain_anthropic import ChatAnthropic
-
 from app.chatbot.router.prompts import ROUTER_SYSTEM_PROMPT
+from langchain_core.messages import HumanMessage, SystemMessage
+
 from app.chatbot.router.schemas import RouteDecision
 from app.chatbot.core.models import analysis_model
-from app.chatbot.router.state import RouterState
+from app.chatbot.state import AgentState
 
+def classify_domain(state: AgentState) -> AgentState: 
+    
+    structured_model = analysis_model.with_structured_output(RouteDecision)
 
-load_dotenv()
-
-
-model_name = os.getenv("ANTHROPIC_MODEL")
-
-if not model_name:
-    raise RuntimeError(
-        "ANTHROPIC_MODEL is missing from the .env file."
+    decision = structured_model.invoke(
+        [
+            SystemMessage(
+                content=ROUTER_SYSTEM_PROMPT
+            ),
+            HumanMessage(
+                content=state["user_query"]
+            )
+        ]
     )
 
+    return {
+        "route": decision.route,
+        "route_confidence": decision.confidence,
+        "route_reason": decision.route_reason
+    }
 
-router_model = ChatAnthropic(
-    model=model_name,
-    max_tokens=500,
-)
+def chosen_route(state: AgentState) -> str: 
 
-
-structured_router = router_model.with_structured_output(
-    RouteDecision
-)
+    route = state.get("route")
+    if not route:
+        raise ValueError(
+            "No route was set by classify_domain"
+        )
+    
+    return route 

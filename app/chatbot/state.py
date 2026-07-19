@@ -23,7 +23,6 @@ class RouterState(TypedDict, total=False):
     total=False means fields may be added gradually as the graph runs.
     """
 
-    query: str
     route: RouteName
     confidence: float
     reason: str
@@ -49,7 +48,8 @@ class AgentState(TypedDict, total=False):
     route_confidence: float
     route_reason: str
 
-    # Regulation Output 
+    # Regulation Output
+    doc_metadata: RetrievedDocument  
     season: int | None
     regulation_types : list[ReglationTypes]
     article_references: list[str] | None

@@ -55,6 +55,7 @@ Examples:
 - Create a full stack web application to track fifa world cup winners and losers
 - Book me a flight from Toronto to Portugal, monitor any changes in air fare from delta or air portugal and notify me.
 
+
 Important:
 - Classify the user's intent, not individual words.
 - Do not answer the user's question.

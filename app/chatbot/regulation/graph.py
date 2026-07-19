@@ -3,6 +3,13 @@ from langgraph.graph import(
     END, 
     StateGraph
 )
+from app.chatbot.regulation.nodes import (
+    retrieve_doc,
+    rerank_docs,
+    validate_evidence,
+    response
+)
+
 
 
 def build_regulation_graph():

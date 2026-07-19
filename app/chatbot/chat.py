@@ -1,17 +1,11 @@
-import os
+from app.chatbot.graph import terminal_chat
+from dotenv import load_dotenv
+import os 
 
-from langchain_anthropic import ChatAnthropic
-from langgraph.graph import (
-    START, 
-    END, 
-    StateGraph
-)
-from app.chatbot.core.models import answer_model
-
+load_dotenv()
 
 def main() -> None:
 
-    client = answer_model
 
     print("F1 chatbot test")
     print("Type 'exit' to stop.\n")
@@ -25,9 +19,13 @@ def main() -> None:
         if not message:
             continue
 
-        response = client.invoke(message)
+        response = terminal_chat.invoke(
+            {
+                "user_query" : message
+            }
+        )
 
-        print(f"\nAssistant: {response.content}\n")
+        print(f"{response["final_answer"]}")
 
 
 if __name__ == "__main__":
