@@ -5,12 +5,14 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api";
 import type {
   ChampionshipProgression,
+  Circuit,
   CircuitRacecraftRow,
   CircuitSummaryRow,
   DriverRef,
   GridFinishDensityRow,
   HeadToHead,
   Page,
+  Round,
   SessionResult,
   SessionType,
   SummaryResponse,
@@ -147,6 +149,24 @@ export function useCircuitDriverMatrix(yearFrom: number, yearTo: number, driverI
         group_by: "circuit_driver",
         driver_ids: driverIds.length ? driverIds : undefined,
       }),
+    ...FOREVER,
+  });
+}
+
+/** Season race calendar — all rounds of a year in order. */
+export function useSeasonRounds(year: number) {
+  return useQuery({
+    queryKey: ["rounds", year],
+    queryFn: () => fetchJson<Page<Round>>("/rounds", { year, limit: 100 }),
+    ...FOREVER,
+  });
+}
+
+/** Full circuit reference table (coords power the calendar globe). */
+export function useCircuits() {
+  return useQuery({
+    queryKey: ["circuits"],
+    queryFn: () => fetchJson<Page<Circuit>>("/circuits", { limit: 500 }),
     ...FOREVER,
   });
 }

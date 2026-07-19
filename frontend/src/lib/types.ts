@@ -38,6 +38,20 @@ export interface TeamRef {
   primary_color: string | null;
 }
 
+export interface Circuit {
+  id: number;
+  api_id: string;
+  reference: string | null;
+  name: string;
+  locality: string | null;
+  country: string | null;
+  country_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  altitude: number | null;
+  wikipedia: string | null;
+}
+
 export interface Round {
   id: number;
   season_id: number;

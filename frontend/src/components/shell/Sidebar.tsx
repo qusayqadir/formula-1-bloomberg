@@ -1,13 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Archive,
   Boxes,
   CalendarDays,
-  Coffee,
   Footprints,
   LayoutDashboard,
-  LifeBuoy,
   MessageSquare,
   Moon,
   Newspaper,
@@ -28,7 +26,75 @@ import { FileTree, FileTreeFile, FileTreeFolder } from "@/components/ai-elements
  *  docs / support destinations; selection follows the router location.
  *  Identity accent stays reserved for the selected tick. */
 
-const EXTERNAL = { coffee: "https://buymeacoffee.com" } as const;
+/** Placeholder profile — swap for real account data once auth exists. */
+const PROFILE = {
+  name: "Qusay Qadir",
+  email: "qusayqadir78@gmail.com",
+  team: "McLaren",
+  driver: "Lando Norris",
+  circuit: "Suzuka",
+  since: "2026",
+} as const;
+
+/** Profile trigger + upward glass popover. Own component: the nav tree is
+ *  rendered twice (desktop rail + mobile drawer), so each copy needs its own
+ *  open state / outside-click ref. */
+function ProfilePill() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative min-w-0">
+      {open && (
+        <div className="absolute bottom-full left-0 z-40 mb-2 w-56 rounded-md border border-ink/20 bg-raised/75 p-3 shadow-[0_1px_2px_rgba(0,0,0,0.1)] backdrop-blur-sm">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-sub">Profile</p>
+          <dl className="mt-2 space-y-1.5 font-mono text-[11px] tabular-nums">
+            {[
+              ["Name", PROFILE.name],
+              ["Email", PROFILE.email],
+              ["Fav Team", PROFILE.team],
+              ["Fav Driver", PROFILE.driver],
+              ["Fav Circuit", PROFILE.circuit],
+              ["Member Since", PROFILE.since],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-3">
+                <dt className="flex-none text-mut">{label}</dt>
+                <dd className="truncate text-right text-ink">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Profile"
+        aria-expanded={open}
+        title="Profile"
+        className="flex w-full min-w-0 items-center gap-2 rounded-lg border border-stroke px-2 py-1.5 text-left transition-colors hover:bg-ink/[0.06]"
+      >
+        <span className="grid h-6 w-6 flex-none place-items-center rounded-md bg-ink/[0.08] text-mut">
+          <UserRound size={13} strokeWidth={1.7} />
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[11.5px] font-medium leading-tight text-ink">
+            {PROFILE.name}
+          </span>
+          <span className="block truncate font-mono text-[9.5px] leading-tight text-mut">
+            {PROFILE.email}
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
 
 export function Sidebar(props: {
   open: boolean;
@@ -47,10 +113,6 @@ export function Sidebar(props: {
   };
 
   const handleSelect = (path: string) => {
-    if (path === "external/coffee") {
-      window.open(EXTERNAL.coffee, "_blank", "noreferrer");
-      return;
-    }
     navigate(path);
     props.onClose();
   };
@@ -100,10 +162,6 @@ export function Sidebar(props: {
         >
           <FileTreeFolder name="terminal" path="terminal">
             <FileTreeFile name="Dashboard" path="/" icon={LayoutDashboard} />
-            <FileTreeFile name="News" path="/news" icon={Newspaper} />
-            <FileTreeFile name="Calendar" path="/calendar" icon={CalendarDays} />
-            <FileTreeFile name="Track Walk" path="/track-walk" icon={Footprints} />
-            <FileTreeFile name="Team Profiles" path="/teams" icon={Users} />
             <FileTreeFile
               name="Live Dashboard"
               path="/live"
@@ -114,6 +172,10 @@ export function Sidebar(props: {
                 </span>
               }
             />
+            <FileTreeFile name="News" path="/news" icon={Newspaper} />
+            <FileTreeFile name="Team Profiles" path="/teams" icon={Users} />
+            <FileTreeFile name="Calendar" path="/calendar" icon={CalendarDays} />
+            <FileTreeFile name="Track Walk" path="/track-walk" icon={Footprints} />
           </FileTreeFolder>
           <FileTreeFolder name="chat" path="chat">
             <FileTreeFile name="Chat" path="/chat" icon={MessageSquare} />
@@ -124,8 +186,6 @@ export function Sidebar(props: {
             <FileTreeFile name="Architecture" path="/docs/architecture" icon={Boxes} />
           </FileTreeFolder>
           <FileTreeFolder name="support" path="support">
-            <FileTreeFile name="Help Center" path="/help" icon={LifeBuoy} />
-            <FileTreeFile name="Buy me Coffee" path="external/coffee" icon={Coffee} />
             <FileTreeFile name="Creator" path="/creator" icon={UserRound} />
           </FileTreeFolder>
         </FileTree>
@@ -158,13 +218,14 @@ export function Sidebar(props: {
         </div>
       )}
 
-      {/* collapse control — pinned bottom-right of the rail */}
-      <div className="mt-3 hidden flex-none justify-end lg:flex">
+      {/* bottom bar — profile (left) opposite the collapse control (right) */}
+      <div className="mt-3 flex flex-none items-center justify-between gap-2">
+        <ProfilePill />
         <button
           onClick={props.onCollapse}
           aria-label="Collapse sidebar"
           title="Collapse sidebar"
-          className="rounded-lg border border-stroke p-2 text-mut transition-colors hover:bg-ink/[0.06] hover:text-ink"
+          className="hidden flex-none rounded-lg border border-stroke p-2 text-mut transition-colors hover:bg-ink/[0.06] hover:text-ink lg:block"
         >
           <PanelLeftClose size={15} strokeWidth={1.7} />
         </button>
