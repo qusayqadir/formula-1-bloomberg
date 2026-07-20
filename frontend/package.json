@@ -19,6 +19,7 @@
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "echarts": "^5.5.1",
+    "flag-icons": "^7.5.0",
     "framer-motion": "^12.42.2",
     "lucide-react": "^0.468.0",
     "motion": "^12.42.2",

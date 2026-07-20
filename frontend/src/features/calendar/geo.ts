@@ -3,6 +3,8 @@
  *  render + auto-rotate without latency. */
 import { feature } from "topojson-client";
 import land110 from "world-atlas/land-110m.json";
+import { formatLapTime } from "@/lib/format";
+import type { Circuit } from "@/lib/types";
 
 export type LonLat = [number, number];
 /** One polygon = [outer ring, ...hole rings]. */
@@ -24,25 +26,26 @@ function decode(): LandPolygon[] {
 export const LAND_POLYGONS: LandPolygon[] = decode();
 export const LAND_RINGS: LonLat[][] = LAND_POLYGONS.flat();
 
-/** Circuit metadata for the hover card. PLACEHOLDERS ONLY for now — swap
- *  this lookup for real data (silver table / API) when it's imported. */
+/** Circuit metadata for the hover card, pre-formatted for display. */
 export interface CircuitMeta {
   length: string;
   recordLap: string;
+  recordHolder: string;
   turns: string;
   drsZones: string;
   trackType: string;
   elevationGain: string;
 }
 
-export function circuitMeta(_circuitId: number): CircuitMeta {
+export function buildCircuitMeta(c: Circuit | undefined): CircuitMeta {
   return {
-    length: "— km",
-    recordLap: "—:——.———",
-    turns: "—",
-    drsZones: "—",
-    trackType: "—",
-    elevationGain: "— m",
+    length: c?.track_length != null ? `${c.track_length.toFixed(3)} km` : "— km",
+    recordLap: formatLapTime(c?.lap_record_s ?? null),
+    recordHolder: c?.record_holder ?? "—",
+    turns: c?.turns != null ? String(c.turns) : "—",
+    drsZones: c?.drs_zones != null ? String(c.drs_zones) : "—",
+    trackType: c?.track_type ?? "—",
+    elevationGain: c?.elevation_gain != null ? `${c.elevation_gain} m` : "— m",
   };
 }
 
@@ -84,6 +87,8 @@ export interface RoutePoint {
 /** A race location to plot, colored by status; `current` is the next race. */
 export interface CircuitDot {
   circuitId: number;
+  /** stable circuit slug (bronze api_id) — keys the track-layout image map */
+  apiId: string | null;
   name: string;
   /** round label rendered beside the dot, e.g. "R3" */
   label: string;
@@ -91,4 +96,5 @@ export interface CircuitDot {
   lon: number;
   emphasis: boolean;
   status: RaceStatus;
+  meta: CircuitMeta;
 }

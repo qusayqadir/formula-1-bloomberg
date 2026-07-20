@@ -1,11 +1,10 @@
 from pydantic import BaseModel 
-
+from app.chatbot.state import RetrievedDocument
 
 
 class RetrievedDocumentMetadata(BaseModel): 
-    document_id: str
-    title: str
-    articles: str
-    text: str
-    score: float
+    season: str
+    regulation_type: 
+    article_references: 
 
+    

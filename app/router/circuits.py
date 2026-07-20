@@ -11,7 +11,10 @@ router = APIRouter(prefix="/circuits", tags=["circuits"])
 
 CIRCUIT_COLS = """
     id, api_id, reference, name, locality, country, country_code,
-    latitude, longitude, altitude, wikipedia
+    latitude, longitude, altitude, wikipedia,
+    track_length, turns, race_laps,
+    EXTRACT(EPOCH FROM lap_record)::float AS lap_record_s,
+    record_holder, track_type, drs_zones, elevation_gain
 """
 
 

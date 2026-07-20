@@ -10,10 +10,12 @@
  *    yellow and wide (px-width Line2 lines). A comet + aircraft fly the
  *    whole route in the active yellow.
  *  - Markers colored by status (completed/future/current), round labels.
- *  - Spins clockwise around the equator; drag or dot-hover holds it; after
+ *  - Spins clockwise around the equator; drag, dot-hover or an open card
+ *    eases it to a stop (and eases it back up — no hard start/stop); after
  *    4s idle only the tilt/zoom axis glides home (spin position kept).
  *  - Hover/click a dot (or click a schedule round via `focus`) → grown dot +
- *    frosted-glass metadata card. */
+ *    frosted-glass metadata card, anchored to the marker's projected screen
+ *    position and re-tracked every frame so it never detaches from its dot. */
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -32,7 +34,7 @@ import {
 import { MetaCard, type DotHit } from "@/features/calendar/MetaCard";
 
 const R = 1;
-const HOME_R = 3.22; // default distance (3.58 × 0.9 — zoomed in another 10%)
+const HOME_R = 3.83; // default distance (~19% out from the original 3.22)
 const HOME_PHI = ((90 - 46) * Math.PI) / 180; // camera at ~46°N — Europe
 const IDLE_RESET_MS = 4000;
 
@@ -177,9 +179,9 @@ export function Globe3D(props: {
   const hostRef = useRef<HTMLDivElement>(null);
   const C = useChartTheme();
   const { dots, route } = props;
-  const [hover, setHover] = useState<DotHit | null>(null);
-  // set only by schedule-list clicks; forgotten as soon as any other dot is hovered
-  const [pinned, setPinned] = useState<DotHit | null>(null);
+  // the visible metadata card, anchored to its marker's projected position
+  // and re-tracked every frame inside the render loop
+  const [card, setCard] = useState<DotHit | null>(null);
   const snapRef = useRef<((lat: number, lon: number, circuitId?: number) => void) | null>(null);
 
   useEffect(() => {
@@ -246,11 +248,12 @@ export function Globe3D(props: {
       );
     }
 
-    // starfield backdrop — three size/alpha tiers on a far shell
+    // starfield backdrop — size/alpha tiers on a far shell (faint dust → bright)
     for (const [count, size, opacity] of [
-      [700, 1.6, 0.9], // sizeAttenuation:false → size is in px
-      [360, 2.4, 0.65],
-      [120, 3.4, 0.4],
+      [2400, 1.1, 0.35], // sizeAttenuation:false → size is in px
+      [1600, 1.6, 0.9],
+      [800, 2.4, 0.65],
+      [260, 3.4, 0.4],
     ] as const) {
       const starPos = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
@@ -426,13 +429,17 @@ export function Globe3D(props: {
     controls.autoRotate = true;
     controls.autoRotateSpeed = -0.6; // negative → clockwise around the equator
     controls.zoomSpeed = 0.5;
-    controls.minDistance = 2.25; // ~-30% of home distance
-    controls.maxDistance = 4.2; // ~+30%
+    controls.minDistance = 2.25; // deepest zoom-in kept from the old home
+    controls.maxDistance = 5.9; // ~+30% of home distance
 
-    // interaction state — rotation only ever pauses while dragging, hovering
-    // a dot, or gliding to a focus; it always resumes on its own
+    // interaction state — rotation eases to a halt while dragging, hovering a
+    // dot, showing a card, or gliding to a focus; it always eases back up
     let dragging = false;
     let hoveredMesh: THREE.Mesh | null = null;
+    let hoverDot: CircuitDot | null = null;
+    // set by schedule-list clicks; forgotten when another dot is hovered or
+    // empty space is clicked
+    let pinnedDot: CircuitDot | null = null;
     let tiltResetting = false;
     let focusTarget: THREE.Vector3 | null = null;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -485,13 +492,16 @@ export function Globe3D(props: {
         hoveredMesh = mesh;
       }
       // hovering a different dot forgets the clicked one for good
-      if (h) setPinned((p) => (p && p.dot.circuitId !== h.dot.circuitId ? null : p));
-      setHover(h);
+      if (h && pinnedDot && pinnedDot.circuitId !== h.dot.circuitId) pinnedDot = null;
+      hoverDot = h?.dot ?? null;
     };
     const onClick = (e: MouseEvent) => {
-      if (!pick(e)) {
+      const h = pick(e);
+      if (h) {
+        pinnedDot = h.dot; // click pins the card so it survives pointer-out
+      } else {
         for (const m of dotMeshes) m.scale.setScalar(1); // clear focus growth
-        setPinned(null);
+        pinnedDot = null;
       }
     };
     renderer.domElement.addEventListener("pointermove", onMove);
@@ -511,6 +521,7 @@ export function Globe3D(props: {
     ro.observe(host);
 
     let raf = 0;
+    let spin = 1; // eased auto-rotate speed factor (0 = held, 1 = full)
     const clock = new THREE.Clock();
     const spherical = new THREE.Spherical();
     const animate = () => {
@@ -550,7 +561,7 @@ export function Globe3D(props: {
       if (focusTarget) {
         camera.position.lerp(focusTarget, 0.12);
         if (camera.position.distanceTo(focusTarget) < 0.01) {
-          // arrived: grow the focused dot and reveal its metadata card
+          // arrived: grow the focused dot and pin its metadata card
           if (focusDotId != null) {
             const mesh = dotMeshes.find(
               (m) => (m.userData.dot as CircuitDot).circuitId === focusDotId,
@@ -558,12 +569,7 @@ export function Globe3D(props: {
             if (mesh) {
               for (const m of dotMeshes) m.scale.setScalar(1);
               mesh.scale.setScalar(1.8);
-              const v = mesh.position.clone().project(camera);
-              setPinned({
-                dot: mesh.userData.dot as CircuitDot,
-                x: ((v.x + 1) / 2) * renderer.domElement.clientWidth,
-                y: ((1 - v.y) / 2) * renderer.domElement.clientHeight,
-              });
+              pinnedDot = mesh.userData.dot as CircuitDot;
             }
             focusDotId = null;
           }
@@ -582,8 +588,40 @@ export function Globe3D(props: {
           tiltResetting = false;
       }
 
-      // rotation holds while dragging, hovering a dot, or gliding to a focus
-      controls.autoRotate = !dragging && hoveredMesh == null && focusTarget == null;
+      // card anchored to the marker's projected position, tracked every frame
+      // so it stays glued to its dot through damping, glides, and drags
+      const activeDot = hoverDot ?? pinnedDot;
+      if (activeDot) {
+        const mesh = dotMeshes.find(
+          (m) => (m.userData.dot as CircuitDot).circuitId === activeDot.circuitId,
+        );
+        if (!mesh || mesh.position.dot(camera.position) < 0) {
+          // dot rotated behind the globe — drop the card (and any pin)
+          if (pinnedDot?.circuitId === activeDot.circuitId) pinnedDot = null;
+          setCard(null);
+        } else {
+          const v = mesh.position.clone().project(camera);
+          const x = ((v.x + 1) / 2) * renderer.domElement.clientWidth;
+          const y = ((1 - v.y) / 2) * renderer.domElement.clientHeight;
+          setCard((c) =>
+            c &&
+            c.dot.circuitId === activeDot.circuitId &&
+            Math.abs(c.x - x) < 0.5 &&
+            Math.abs(c.y - y) < 0.5
+              ? c
+              : { dot: activeDot, x, y },
+          );
+        }
+      } else {
+        setCard((c) => (c ? null : c));
+      }
+
+      // rotation eases out while dragging, hovering, showing a card, or
+      // gliding to a focus — and eases back in when the interaction ends
+      const spinTarget = dragging || activeDot || focusTarget ? 0 : 1;
+      spin += (spinTarget - spin) * 0.06;
+      controls.autoRotate = spin > 0.002;
+      controls.autoRotateSpeed = -0.6 * spin;
       controls.update();
       renderer.render(scene, camera);
     };
@@ -611,8 +649,7 @@ export function Globe3D(props: {
       for (const d of disposables) d.dispose();
       renderer.dispose();
       host.removeChild(renderer.domElement);
-      setHover(null);
-      setPinned(null);
+      setCard(null);
     };
   }, [C, dots, route]);
 
@@ -621,8 +658,6 @@ export function Globe3D(props: {
   useEffect(() => {
     if (focus) snapRef.current?.(focus.lat, focus.lon, focus.circuitId);
   }, [focus]);
-
-  const card = hover ?? pinned;
 
   return (
     <div ref={hostRef} className="absolute inset-0" aria-label="Race calendar globe">
@@ -634,7 +669,13 @@ export function Globe3D(props: {
             "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%)",
         }}
       />
-      {card && <MetaCard hit={card} hostWidth={hostRef.current?.clientWidth ?? 0} />}
+      {card && (
+        <MetaCard
+          hit={card}
+          hostWidth={hostRef.current?.clientWidth ?? 0}
+          hostHeight={hostRef.current?.clientHeight ?? 0}
+        />
+      )}
     </div>
   );
 }

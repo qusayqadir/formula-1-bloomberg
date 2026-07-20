@@ -8,10 +8,12 @@ import { useFilters } from "@/state/filters";
 import { useCircuits, useSeasonRounds } from "@/lib/queries";
 import { shortRoundName } from "@/lib/format";
 import type { Circuit, Round } from "@/lib/types";
+import "flag-icons/css/flag-icons.min.css";
 import { ChevronDown } from "lucide-react";
 import { Globe3D, type GlobeFocus } from "@/features/calendar/Globe3D";
 import { Map2D } from "@/features/calendar/Map2D";
-import { GLOBE_PALETTE as P, type CircuitDot, type RoutePoint } from "@/features/calendar/geo";
+import { buildCircuitMeta, GLOBE_PALETTE as P, type CircuitDot, type RoutePoint } from "@/features/calendar/geo";
+import { circuitIso2 } from "@/features/calendar/flags";
 
 /* Frosted-glass surface in the calendar palette (fixed panel colors). */
 const GLASS =
@@ -61,12 +63,14 @@ export function CalendarPage() {
       const isCurrent = upcoming?.circuit_id === c.id;
       out.push({
         circuitId: c.id,
+        apiId: c.api_id ?? null,
         name: c.name,
         label: r.number != null ? `R${r.number}` : "R—",
         lat: c.latitude,
         lon: c.longitude,
         emphasis: isCurrent,
         status: isCurrent ? "current" : r.date != null && r.date < today ? "completed" : "future",
+        meta: buildCircuitMeta(c),
       });
     }
     return out;
@@ -179,6 +183,7 @@ export function CalendarPage() {
 
 function RaceCard(props: { label: string; round: Round | null; circuit?: Circuit }) {
   const { label, round, circuit } = props;
+  const iso = circuitIso2(circuit);
   return (
     <div
       className={`${GLASS} w-[250px] p-3.5 transition-transform duration-150 ease-out hover:-translate-y-2 hover:scale-[1.06]`}
@@ -186,10 +191,18 @@ function RaceCard(props: { label: string; round: Round | null; circuit?: Circuit
       <p className="font-mono text-[10px] uppercase tracking-wider text-sub">{label}</p>
       {round ? (
         <div className="mt-2 flex items-center gap-2.5">
-          {/* flag placeholder — swap for an <img> once flags are imported */}
-          <span className="grid h-5 w-7 flex-none place-items-center rounded-[1px] border border-ink/20 bg-ink/[0.08] font-mono text-[8px] uppercase text-mut">
-            {circuit?.country_code ?? "??"}
-          </span>
+          {iso ? (
+            <span
+              className={`fi fi-${iso} flex-none rounded-[1px]`}
+              style={{ width: 28, height: 21, borderColor: P.panelBorder }}
+              role="img"
+              aria-label={circuit?.country ?? "Country flag"}
+            />
+          ) : (
+            <span className="grid h-5 w-7 flex-none place-items-center rounded-[1px] border border-ink/20 bg-ink/[0.08] font-mono text-[8px] uppercase text-mut">
+              ??
+            </span>
+          )}
           <span className="min-w-0">
             <span className="block truncate font-mono text-[11px] text-ink">
               {circuit?.name ?? round.circuit_name}

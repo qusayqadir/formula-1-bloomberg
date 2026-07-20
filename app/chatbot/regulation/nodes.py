@@ -16,18 +16,27 @@ from app.chatbot.regulation.schemas import (
 from langchain_core.vectorstores import InMemoryVectorStore
 from functools import lru_cache 
 
-def anaylze_query()
+def anaylze_query():
+
+    find_docs = anaylsis_model.with_structured_data(RetrievedDocumentMetadata)
+
 def retrieve_docs(user_query: str, state: AgentState) -> AgentState: 
+
+    # if direct article_refernces then lookup 
+    
+    #else hybrid search 
     
     find_docs = analysis_model.with_structured_data(RetrievedDocumentMetadata)
 
-def rerank_docks()
+def rerank_docks():
 
-def validate_retrieval()
+    #corss-encoder rerank 
 
-def generate_response()
+def validate_retrieval():
 
-def validate_response()
+def generate_response():
+
+def validate_response():
 
 
     

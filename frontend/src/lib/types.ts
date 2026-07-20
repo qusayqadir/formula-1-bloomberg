@@ -50,6 +50,14 @@ export interface Circuit {
   longitude: number | null;
   altitude: number | null;
   wikipedia: string | null;
+  track_length: number | null;
+  turns: number | null;
+  race_laps: number | null;
+  lap_record_s: number | null;
+  record_holder: string | null;
+  track_type: string | null;
+  drs_zones: number | null;
+  elevation_gain: number | null;
 }
 
 export interface Round {

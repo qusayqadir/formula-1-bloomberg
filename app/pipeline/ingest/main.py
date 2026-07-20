@@ -24,6 +24,7 @@ from app.pipeline.ingest.ingest_tables_raw import (
     )
 
 from app.pipeline.ingest.derive_tables import expand_sessions, ingest_sessions
+from app.pipeline.ingest.circuit_metadata import load_circuit_metadata, upsert_circuit_metadata
 
 def fetch_and_fill_schema():
     with get_connection() as conn:
@@ -62,11 +63,15 @@ def fetch_and_fill_schema():
         # insert_session_entries(conn, session_entries)
         # print(f"Inserted {len(session_entries)} Session Entries")
         
-        constructor_standings, driver_standings = fetch_all_standings()
-        insert_constructor_championship(conn, constructor_standings)
-        print(f"Inserted {len(constructor_standings)} Constructor Standings Entries")
-        insert_driver_championship(conn, driver_standings)
-        print(f"Inserted {len(driver_standings)} Driver Standings Entries")
+        # constructor_standings, driver_standings = fetch_all_standings()
+        # insert_constructor_championship(conn, constructor_standings)
+        # print(f"Inserted {len(constructor_standings)} Constructor Standings Entries")
+        # insert_driver_championship(conn, driver_standings)
+        # print(f"Inserted {len(driver_standings)} Driver Standings Entries")
+
+        circuit_meta = load_circuit_metadata()
+        updated = upsert_circuit_metadata(conn, circuit_meta)
+        print(f"Updated circuit metadata on {updated} circuits")
 
 
 if __name__ == "__main__":

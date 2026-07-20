@@ -61,6 +61,14 @@ class Circuit(BaseModel):
     longitude: Optional[float] = None
     altitude: Optional[float] = None
     wikipedia: Optional[str] = None
+    track_length: Optional[float] = None
+    turns: Optional[int] = None
+    race_laps: Optional[int] = None
+    lap_record_s: Optional[float] = None
+    record_holder: Optional[str] = None
+    track_type: Optional[str] = None
+    drs_zones: Optional[int] = None
+    elevation_gain: Optional[int] = None
 
 
 # ── bronze.team ────────────────────────────────────────────────────────────

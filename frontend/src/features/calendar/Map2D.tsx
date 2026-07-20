@@ -340,7 +340,13 @@ export function Map2D(props: {
   return (
     <div ref={hostRef} className="absolute inset-0" aria-label="Race calendar map">
       <canvas ref={canvasRef} className="absolute" style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }} />
-      {card && <MetaCard hit={card} hostWidth={hostRef.current?.clientWidth ?? 0} />}
+      {card && (
+        <MetaCard
+          hit={card}
+          hostWidth={hostRef.current?.clientWidth ?? 0}
+          hostHeight={hostRef.current?.clientHeight ?? 0}
+        />
+      )}
     </div>
   );
 }
