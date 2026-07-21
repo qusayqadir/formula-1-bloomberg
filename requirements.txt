@@ -1,7 +1,6 @@
 sqlalchemy>=2.0
 alembic>=1.13
 psycopg[binary]>=3.2
-python-dotenv>=1.0
 pydantic>=2.0
 pydantic-settings>=2.3
 requests>=2.32
@@ -19,3 +18,7 @@ beautifulsoup4==4.15.0
 requests==2.34.2
 python-dotenv==1.2.2
 pymongo==4.17.0
+
+# Embeddings
+voyageai>=0.3
+# NOTE: gridfs ships inside pymongo (above) — do not add a separate gridfs package

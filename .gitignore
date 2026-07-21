@@ -3,6 +3,7 @@
 venv/
 __pycache__/
 *.pyc
-.pytest_cache/
 .idea/
 .vscode/
+
+fia_regulations_data/

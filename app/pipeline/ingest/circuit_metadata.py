@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-METADATA_PATH = Path(__file__).parent / "f1_circuit_metadata.json"
+METADATA_PATH = Path(__file__).parent / "data" / "f1_circuit_metadata.json"
 
 
 def load_circuit_metadata() -> list[dict]:

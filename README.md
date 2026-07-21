@@ -1,14 +1,35 @@
 # Formula-1 Bloomberg Terminal 
 
-### Features
+### Setup a README.md 
 
-| Task | Current Status |
-|------|----------------|
-| Build and complete the claude anatomy of the project | In Progress | 
-| Work on the databse schema for the historical data pipeline (after deciding what I want to dispaly - only history, no live telemetry data) | In Progress |
-| Setup the env variables | |
-| Finalize the tech stack ||
-| For the internal chat, create a RAG based arc with custom chunking, embeddings, and re-ranking ||
+```
+# DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST:PORT/DATABASE"
+
+#Database connection url
+DATABASE_URL=
+
+#API Endpoints
+#Backend API Endpoints
+BASE_URL="https://api.jolpi.ca/ergast/f1"
+
+
+#Langgraph Graph/Node Model API Key 
+ANTHROPIC_API_KEY=""
+
+#Langsmith Configuration 
+LANGSMITH_TRACING=true
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+LANGSMITH_API_KEY="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"
+LANGSMITH_PROJECT="formula-1-bloomberg-chat"
+ANTHROPIC_MODEL=claude-sonnet-5
+
+#MongoDB Config 
+MONGODB_URI=""
+MONGODB_DATABASE_NAME=""
+
+#Embedding Model API Key
+VOYAGE_API_KEY=""
+```
 
 
 #### Database Design Doc

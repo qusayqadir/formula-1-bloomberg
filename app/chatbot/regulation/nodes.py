@@ -1,4 +1,7 @@
-from app.chatbot.regulation.prompt import REGULATION_SYSTEM_PROMPT
+from app.chatbot.regulation.prompt import (
+    REGULATION_SYSTEM_PROMPT,
+    REGULATION_QUERY_ANAYLSIS_PROMPT
+) 
 from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
@@ -13,12 +16,7 @@ from app.chatbot.regulation.schemas import (
     RetrievedDocumentMetadata
 )
 
-from langchain_core.vectorstores import InMemoryVectorStore
-from functools import lru_cache 
-
 def anaylze_query():
-
-    find_docs = anaylsis_model.with_structured_data(RetrievedDocumentMetadata)
 
 def retrieve_docs(user_query: str, state: AgentState) -> AgentState: 
 
@@ -28,15 +26,13 @@ def retrieve_docs(user_query: str, state: AgentState) -> AgentState:
     
     find_docs = analysis_model.with_structured_data(RetrievedDocumentMetadata)
 
-def rerank_docks():
+def rerank_docks(state: AgentState) -> AgentState:
 
     #corss-encoder rerank 
 
-def validate_retrieval():
+def validate_retrieval(state: AgentState) -> AgentState:
 
-def generate_response():
+def generate_response(user_query: str, state: AgentState) -> AgentState:
+
 
 def validate_response():
-
-
-    
