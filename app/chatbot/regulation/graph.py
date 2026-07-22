@@ -4,19 +4,20 @@ from langgraph.graph import(
     StateGraph
 )
 from app.chatbot.regulation.nodes import (
-    retrieve_doc,
+    analyze_query,
+    retrieve_docs,
     rerank_docs,
-    validate_evidence,
-    response
+    validate_retrieval,
+    generate_response,
+    validate_response
 )
+
 
 
 
 def build_regulation_graph():
 
     builder = StateGraph() 
-
-    builder.add_node()
     builder.add_edge()
     builder.add_conditional_edges()
 

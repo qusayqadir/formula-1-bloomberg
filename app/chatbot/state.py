@@ -30,11 +30,11 @@ class RouterState(TypedDict, total=False):
 
 class RetrievedDocument(TypedDict):
     
-    document_id: str
-    title: str
-    articles: str
-    text: str
-    score: float
+    filename: str 
+    season: str
+    regulation_type: str 
+    section_type: str | None 
+    section_number: str | None
 
 
 # state is internal workflow memory 
@@ -49,11 +49,8 @@ class AgentState(TypedDict, total=False):
     route_reason: str
 
     # Regulation Output
-    doc_metadata: RetrievedDocument  
-    season: int | None
-    regulation_types : list[ReglationTypes]
-    article_references: list[str] | None
-    retrieval_query: str
+    doc_metadata: RetrievedDocument
+    retrieved_docs: list[dict]
 
     #DataVis Output 
 

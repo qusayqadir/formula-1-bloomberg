@@ -22,3 +22,5 @@ pymongo==4.17.0
 # Embeddings
 voyageai>=0.3
 # NOTE: gridfs ships inside pymongo (above) — do not add a separate gridfs package
+
+pypdf>=
