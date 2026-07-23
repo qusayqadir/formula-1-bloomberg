@@ -116,6 +116,15 @@ Return:
 * and the supporting article references.
 
 Never fabricate support for an answer.
+
+## Confidence
+
+Also return a confidence score between 0.0 and 1.0 reflecting how well the
+retrieved context supports the answer:
+
+* 0.9-1.0 — the retrieved articles directly and unambiguously answer the question.
+* 0.5-0.8 — the retrieved context is relevant but partial, indirect, or requires interpretation.
+* 0.0-0.4 — the retrieved context is missing, irrelevant, or contradictory.
 """
 
 

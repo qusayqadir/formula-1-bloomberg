@@ -3,6 +3,7 @@ from langgraph.graph import(
     END, 
     StateGraph
 )
+from app.chatbot.state import AgentState
 from app.chatbot.regulation.nodes import (
     analyze_query,
     retrieve_docs,
@@ -17,9 +18,12 @@ from app.chatbot.regulation.nodes import (
 
 def build_regulation_graph():
 
-    builder = StateGraph() 
+    builder = StateGraph(AgentState) 
     builder.add_edge()
     builder.add_conditional_edges()
+
+
+    return builder.compile()
 
 
 regulation_graph = build_regulation_graph()

@@ -51,6 +51,9 @@ class AgentState(TypedDict, total=False):
     # Regulation Output
     doc_metadata: RetrievedDocument
     retrieved_docs: list[dict]
+    reranked_docs: list[dict]
+    regulation_response: str
+    regulation_response_confidence: float
 
     #DataVis Output 
 

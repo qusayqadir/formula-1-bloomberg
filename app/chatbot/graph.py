@@ -1,3 +1,4 @@
+from app.chatbot import regulation
 from langgraph.graph import (
     START, 
     END, 
@@ -6,10 +7,9 @@ from langgraph.graph import (
 
 from app.chatbot.state import AgentState
 from app.chatbot.router.graph import router_graph
+from app.chatbot.regulation.graph import regulation_graph
 
-from app.chatbot.router.nodes import (
-    chosen_route
-)
+
 # from app.chatbot.regulation.nodes import (
 
 # )
@@ -30,9 +30,24 @@ def build_terminal_chat():
         router_graph,
     )
 
+    builder.add_node(
+        "regulation",
+        regulation_graph,
+    )
+
     builder.add_edge(
         START,
         "router"
+    )
+
+    builder.add_edge(
+        "router",
+        "regulation"
+    )
+
+    builder.add_edge(
+        "regulation",
+        END
     )
 
     # builder.add_conditional_edges(
@@ -48,3 +63,5 @@ def build_terminal_chat():
 
 
 terminal_chat = build_terminal_chat() 
+# g = terminal_chat.get_graph()
+# open("graph.png", "wb").write(g.draw_mermaid_png())

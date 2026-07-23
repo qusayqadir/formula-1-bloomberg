@@ -1,3 +1,4 @@
+from multiprocessing import context
 from typing import Literal
 from app.chatbot.regulation.prompt import (
     REGULATION_SYSTEM_PROMPT,
@@ -14,7 +15,8 @@ from app.chatbot.core.models import (
 )
 
 from app.chatbot.regulation.schemas import (
-    RetrievedDocumentMetadata
+    RetrievedDocumentMetadata,
+    RegulationAnswer,
 )
 import voyageai
 
@@ -23,13 +25,15 @@ from core.database import (
 )
 
 import os
-import gridfs
 from dotenv import load_dotenv
-import requests
-import json
+
+from pymongo import MongoClient
+
 load_dotenv()
 
 #determine which season, and regulation type 
+
+vo = voyageai.Client()
 def analyze_query(state: AgentState) -> AgentState:
 
     structured_model = analysis_model.with_structured_output(RetrievedDocumentMetadata)
@@ -56,72 +60,83 @@ def analyze_query(state: AgentState) -> AgentState:
     }
 
 
-def retrieve_docs(state: AgentState): 
-
-    vo = voyageai.Client()
+def retrieve_docs(state: AgentState):
 
     result = vo.contextualized_embed(
-        inputs=[state["user_query"]],
-        model="votage-context-3",
+        inputs=[[state["user_query"]]],
+        model="voyage-context-3",
         input_type="query",
         output_dimension=1024,
     )
-    query_embedding = result.results[0].embeddings
+    query_vector = result.results[0].embeddings[0]
 
     mongodb_client = get_mongo_connection()
     db = mongodb_client[os.environ["MONGODB_DATABASE_NAME"]]
-
-    db["regulation_embeddings"].aggregate([
+    #regulatoin is a collection of docs 
+    cursor = db["regulation_embeddings"].aggregate([
         {
             "$vectorSearch": {
-                "index" : "vector_index", 
+                "index" : "vector_index",
                 "path" : "voyage_embedding",
-                "queryVector": query_embedding,
-                "num"
+                "queryVector": query_vector,
+                "numCandidates": 50,
+                "filter" : {
+                    "metadata.season" : state["doc_metadata"]["season"],
+                    "metadata.filename" : state["doc_metadata"]["filename"] ,
+                    "metadata.regulation_type" :  state["doc_metadata"]["regulation_type"],
+                    "metadata.section_type" : state["doc_metadata"]["section_type"] ,
+                    "metadata.section_number" :  state["doc_metadata"]["section_number"] ,
+                }
             }
         },
         {
-
+            "$project": {
+                "_id": 1,
+                "text": 1,
+                "score": {"$meta": "vectorSearchScore"}
+            }
         }
     ])
 
-    
-
-    # if direct article_refernces then lookup 
-    
-    #else hybrid search 
-
-    return 
+    return {
+        "retrieved_docs" : list(cursor)
+    }
 
 def rerank_docs(state: AgentState):
 
-    reranker_url = "https://api.voyageai.com/v1/rerank"
-    headers = {
-        "Authorizatoin" : f"Bearer {bearer_token}",
-        "Content-type" : "applicatoin/json"
-    }
+    docs = state["retrieved_docs"]
 
-    payload = retrieve_docs()
-
-    response = requests.post(
-        url=reranker_url, 
-        headers=headers,
-        json=payload 
+    reranked = vo.rerank(
+        query=state["user_query"],
+        documents=[d["text"] for d in docs],
+        model="rerank-2.5-lite",
+        top_k=20,
     )
 
-    response.raise_for_status()
-    response_data = response.json()
-
     return {
-        "doc_id": 
+        "reranked_docs": [docs[r.index] for r in reranked.results]
     }
 
+def generate_response(state: AgentState) -> AgentState:
+    
+    context = "\n\n---\n\n".join(d["text"] for d in state["reranked_docs"])
 
-    #corss-encoder rerank 
+    structured_model = answer_model.with_structured_output(RegulationAnswer)
 
-def validate_retrieval(state: AgentState) -> AgentState:
-
-def generate_response(user_query: str, state: AgentState) -> AgentState:
+    agent_response = structured_model.invoke(
+        [
+            SystemMessage(
+                content=REGULATION_SYSTEM_PROMPT
+            ),
+            HumanMessage(
+                content=f"Context:\n{context}\n\nQuestion:\n{state['user_query']}"
+                ),
+        ]
+    )
+    return {
+        "regulation_response": agent_response.answer,
+        "regulation_response_confidence": agent_response.confidence,
+    }
 
 def validate_response(state: AgentState) -> Literal["Yes_Valid", "Search_Again"]:
 
