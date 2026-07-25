@@ -1,5 +1,7 @@
 from typing import Literal, TypedDict
 
+from app.chatbot.regulation.prompt import REWRITE_QUERY_PROMPT
+
 
 RouteName = Literal[
     "REGULATION",
@@ -29,11 +31,11 @@ class RouterState(TypedDict, total=False):
     response: str
 
 class RetrievedDocument(TypedDict):
-    
-    filename: str 
-    season: str
-    regulation_type: str 
-    section_type: str | None 
+
+    filename: str | None
+    season: str | None
+    regulation_type: list[str]
+    section_type: str | None
     section_number: str | None
 
 
@@ -55,7 +57,14 @@ class AgentState(TypedDict, total=False):
     regulation_response: str
     regulation_response_confidence: float
 
-    #DataVis Output 
+    # Validation / rewrite loop
+    validate_response_is_valid: bool
+    validate_response_confidence: float
+    validate_response_reason: str
+    rewritten_query: str
+    validation_count: int
+
+    #DataVis Output
 
     #Output
     final_answer: str

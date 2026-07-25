@@ -1,9 +1,10 @@
-from multiprocessing import context
 from typing import Literal
 from app.chatbot.regulation.prompt import (
     REGULATION_SYSTEM_PROMPT,
-    REGULATION_QUERY_ANAYLSIS_PROMPT
-) 
+    REGULATION_QUERY_ANAYLSIS_PROMPT,
+    VALIDATE_RESPONSE_PROMPT,
+    REWRITE_QUERY_PROMPT,
+)
 from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
@@ -17,6 +18,8 @@ from app.chatbot.core.models import (
 from app.chatbot.regulation.schemas import (
     RetrievedDocumentMetadata,
     RegulationAnswer,
+    ValidationResponse,
+    ReWriteQuery,
 )
 import voyageai
 
@@ -72,21 +75,33 @@ def retrieve_docs(state: AgentState):
 
     mongodb_client = get_mongo_connection()
     db = mongodb_client[os.environ["MONGODB_DATABASE_NAME"]]
-    #regulatoin is a collection of docs 
-    cursor = db["regulation_embeddings"].aggregate([
+    collection = db["regulation_embeddings"]
+
+    meta = state["doc_metadata"]
+
+    # Only filter on fields the query analysis actually found.
+    # Empty / "unknown" values are skipped so they don't match zero documents.
+    metadata_filter = {}
+    if meta.get("season") and meta["season"] not in ("unknown", "latest"):
+        metadata_filter["metadata.season"] = meta["season"]
+    if meta.get("filename"):
+        metadata_filter["metadata.filename"] = meta["filename"]
+    if meta.get("regulation_type"):
+        metadata_filter["metadata.regulation_type"] = {"$in": meta["regulation_type"]}
+    if meta.get("section_type"):
+        metadata_filter["metadata.section_type"] = meta["section_type"]
+    if meta.get("section_number"):
+        metadata_filter["metadata.section_number"] = meta["section_number"]
+
+    cursor = collection.aggregate([
         {
             "$vectorSearch": {
-                "index" : "vector_index",
-                "path" : "voyage_embedding",
+                "index": "vector_index",
+                "path": "voyage_embedding",
                 "queryVector": query_vector,
                 "numCandidates": 50,
-                "filter" : {
-                    "metadata.season" : state["doc_metadata"]["season"],
-                    "metadata.filename" : state["doc_metadata"]["filename"] ,
-                    "metadata.regulation_type" :  state["doc_metadata"]["regulation_type"],
-                    "metadata.section_type" : state["doc_metadata"]["section_type"] ,
-                    "metadata.section_number" :  state["doc_metadata"]["section_number"] ,
-                }
+                "limit": 50,
+                "filter": metadata_filter,
             }
         },
         {
@@ -99,7 +114,7 @@ def retrieve_docs(state: AgentState):
     ])
 
     return {
-        "retrieved_docs" : list(cursor)
+        "retrieved_docs": list(cursor)
     }
 
 def rerank_docs(state: AgentState):
@@ -138,13 +153,77 @@ def generate_response(state: AgentState) -> AgentState:
         "regulation_response_confidence": agent_response.confidence,
     }
 
-def validate_response(state: AgentState) -> Literal["Yes_Valid", "Search_Again"]:
+def validate_response(state: AgentState) -> AgentState:
+
+    validator = analysis_model.with_structured_output(ValidationResponse)
+
+    context = "\n\n---\n\n".join(d["text"] for d in state["reranked_docs"])
+
+    validation_response = validator.invoke(
+        [
+            SystemMessage(
+                content=VALIDATE_RESPONSE_PROMPT
+            ),
+            HumanMessage(
+                content=(
+                    f"Question:\n{state['user_query']}\n\n"
+                    f"Retrieved context:\n{context}\n\n"
+                    f"Candidate answer:\n{state['regulation_response']}"
+                )
+            ),
+        ]
+    )
+
+    return {
+        "validate_response_is_valid": validation_response.is_valid,
+        "validate_response_confidence": validation_response.confidence,
+        "validate_response_reason": validation_response.reason,
+    }
 
 
-    if state["regulation_response_confidence"] < 0.70: 
-        return "Search_Again"
-    
-    return "Yes_Valid"
+def rewrite_query(state: AgentState) -> AgentState: 
+
+    rewriter = answer_model.with_structured_output(ReWriteQuery)
+
+    rewritten_query = rewriter.invoke(
+        [
+            SystemMessage(
+                content=REWRITE_QUERY_PROMPT
+            ),
+            HumanMessage(
+                content=(
+                    f"User query: {state['user_query']}\n"
+                    f"Reason previous attempt was insufficient: {state['validate_response_reason']}"
+                )
+            ),
+        ]
+    )
+
+    return {
+        "user_query": rewritten_query.new_query,
+        "validation_count": state.get("validation_count", 0) + 1,
+    }
+
+MAX_VALIDATION_ATTEMPTS = 2
+
+def chosen_route(state: AgentState) -> Literal["respond", "rewrite_query"]:
+
+    is_valid = state.get("validate_response_is_valid", False)
+    confidence = state.get("validate_response_confidence") or 0.0
+
+    if is_valid and confidence >= 0.7:
+        return "respond"
+
+
+    if state.get("validation_count", 0) >= MAX_VALIDATION_ATTEMPTS:
+        return "respond"
+
+    return "rewrite_query"
+
 
 
 def respond(state: AgentState) -> AgentState: 
+    
+    return {
+        "final_answer": state["regulation_response"]
+    }
