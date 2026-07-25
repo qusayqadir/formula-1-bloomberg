@@ -58,7 +58,7 @@ def build_regulation_graph():
     builder.add_conditional_edges(
         "validate_response",
         chosen_route, 
-        {                      # map each possible return string -> next node
+        {                     
             "respond": "respond",
             "rewrite_query": "rewrite_query",
         },

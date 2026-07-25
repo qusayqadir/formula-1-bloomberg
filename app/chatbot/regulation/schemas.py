@@ -15,14 +15,12 @@ RegulationType = Literal[
 
 
 class RetrievedDocumentMetadata(BaseModel):
-    # A specific document filename ("{season}_{regulation_type}") when the user
-    # names one unambiguously; otherwise left unset.
     filename: str | None = None
-    # Year string (e.g. "2024"), or "latest" for the most recent, or unset.
     season: str | None = None
-    # Zero or more relevant regulation categories.
     regulation_type: list[RegulationType] = []
     section_type: Literal["ARTICLE", "APPENDIX"] | None = None
+    
+    
     # Section identifier following the type, e.g. "C3" (pattern [A-F]\d+).
     section_number: str | None = None
 
