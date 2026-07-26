@@ -8,7 +8,7 @@ from langgraph.graph import (
 from app.chatbot.state import AgentState
 from app.chatbot.router.graph import router_graph
 from app.chatbot.regulation.graph import regulation_graph
-
+from app.chatbot.data_visual.graph import data_visual_graph
 
 # from app.chatbot.regulation.nodes import (
 
@@ -64,4 +64,4 @@ def build_terminal_chat():
 
 terminal_chat = build_terminal_chat() 
 # g = terminal_chat.get_graph()
-# open("graph.png", "wb").write(g.draw_mermaid_png())
+# open("final-chat-graph.png", "wb").write(g.draw_mermaid_png())

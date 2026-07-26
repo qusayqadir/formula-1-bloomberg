@@ -8,7 +8,7 @@ RegulationType = Literal[
     "general_provisioning",
     "sporting",
     "technical",
-    "financial_f1_teams",
+    "financial_f1_teams", 
     "financial_pu_manufacturers",
     "operational",
 ]

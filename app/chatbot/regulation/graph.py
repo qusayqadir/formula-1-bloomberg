@@ -79,4 +79,4 @@ def build_regulation_graph():
 
 regulation_graph = build_regulation_graph()
 g = regulation_graph.get_graph()
-open("graph.png", "wb").write(g.draw_mermaid_png())
+open("regulation_graph.png", "wb").write(g.draw_mermaid_png())
