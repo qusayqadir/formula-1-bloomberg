@@ -1,11 +1,21 @@
 # Formula-1 Bloomberg Terminal 
 
-### Setup a README.md 
+### AWS Architecture:
+
+<img width="3080" height="1528" alt="AWS F1-Bloomberg Terminal Architecture" src="https://github.com/user-attachments/assets/583aba36-722f-47aa-bff2-c3a8e4f3b2b4" />
+
+### Database Schema: 
+
+<img width="1758" height="2612" alt="f1-database-schema" src="https://github.com/user-attachments/assets/b49abe68-4863-4ff0-8c34-5e316bc70303" />
+
+### .env file 
 
 ```
 # DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST:PORT/DATABASE"
 
-#Database connection url
+#Database connection url![Uploading AWS.F1-Bloomberg.Terminal.Architecture.png…]()
+![Uploading AWS.F1-Bloomberg.Terminal.Architecture.png…]()
+
 DATABASE_URL=
 
 #API Endpoints
@@ -31,7 +41,3 @@ MONGODB_DATABASE_NAME=""
 VOYAGE_API_KEY=""
 ```
 
-
-#### Database Design Doc
-
-[View Databse Architecture](https://www.drawdb.app/editor/diagrams/8dd48dac-4b52-4c9f-9468-14ed81ce5c77)
