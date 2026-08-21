@@ -1,6 +1,5 @@
 from app.chatbot.graph import terminal_chat
 from dotenv import load_dotenv
-import os 
 
 load_dotenv()
 

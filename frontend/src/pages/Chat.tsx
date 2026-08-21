@@ -26,16 +26,25 @@ const SUGGESTIONS = [
   "At which circuits does pole convert to a win least often?",
 ];
 
-/** Placeholder responder — replace with the chat API call once
- *  app/chatbot is mounted under /api/v1. */
-function respond(question: string): string {
-  return (
-    "The chat backend isn't connected yet — this thread is a working UI preview. " +
-    "Once the chat service in app/chatbot is exposed over the API, answers here " +
-    "will be grounded in the ingested 2011–2025 database (results, standings, " +
-    "circuits) with citations back to source rows.\n\n" +
-    `Your question — “${question}” — is exactly the kind of thing it will answer.`
-  );
+async function respond(question: string): Promise<string> {
+  try {
+    const response = await fetch("/api/v1/chatbot/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user_query: question }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.answer;
+  } catch (error) {
+    return `Error: Could not process your question. ${error instanceof Error ? error.message : "Unknown error"}`;
+  }
 }
 
 export function ChatPage() {
@@ -63,23 +72,25 @@ export function ChatPage() {
     }
   }, [composerOpen]);
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const question = text.trim();
     if (!question) return;
     setMessages((m) => [...m, { id: nextId.current++, role: "user", content: question }]);
     setDraft("");
     setComposerOpen(true);
     inputRef.current?.focus();
-    // simulated generation window — replace with the streaming API call
     setThinking(true);
     clearTimeout(replyTimer.current);
-    replyTimer.current = setTimeout(() => {
+
+    try {
+      const answer = await respond(question);
       setMessages((m) => [
         ...m,
-        { id: nextId.current++, role: "assistant", content: respond(question) },
+        { id: nextId.current++, role: "assistant", content: answer },
       ]);
+    } finally {
       setThinking(false);
-    }, 1800);
+    }
   };
 
   return (
@@ -90,9 +101,9 @@ export function ChatPage() {
           <p className="eyebrow">Home / Chat</p>
           <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-ink">Chat</h1>
         </div>
-        <span className="flex items-center gap-1.5 rounded-full border border-stroke px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-amber">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber" aria-hidden />
-          Prototype · backend offline
+        <span className="flex items-center gap-1.5 rounded-full border border-stroke px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-accent">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+          Live · backend connected
         </span>
       </header>
 

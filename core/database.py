@@ -20,13 +20,14 @@ def get_connection(**kwargs) -> psycopg.Connection:
     # SQLAlchemy-style postgresql+psycopg:// used by Alembic
     return psycopg.connect(
         get_database_url().replace("postgresql+psycopg://", "postgresql://"),
+        row_factory=dict_row,
         **kwargs,
     )
 
 
 def get_db() -> Iterator[psycopg.Connection]:
     """FastAPI dependency: read-only connection with dict rows."""
-    with get_connection(row_factory=dict_row) as conn:
+    with get_connection() as conn:
         yield conn
 
 def get_mongo_url() -> str: 

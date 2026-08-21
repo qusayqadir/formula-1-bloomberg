@@ -1,5 +1,4 @@
 from langsmith import Client
-from pydantic.json_schema import Examples 
 
 
 DATASET_NAME = "f1-domain-router-node"

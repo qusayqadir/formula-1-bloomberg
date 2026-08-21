@@ -30,8 +30,6 @@ from core.database import (
 import os
 from dotenv import load_dotenv
 
-from pymongo import MongoClient
-
 load_dotenv()
 
 #determine which season, and regulation type 
@@ -93,6 +91,8 @@ def retrieve_docs(state: AgentState):
     if meta.get("section_number"):
         metadata_filter["metadata.section_number"] = meta["section_number"]
 
+
+    #semantic search, not keyword search
     cursor = collection.aggregate([
         {
             "$vectorSearch": {
@@ -113,6 +113,7 @@ def retrieve_docs(state: AgentState):
         }
     ])
 
+    #include keyword search for hybrid search 
     return {
         "retrieved_docs": list(cursor)
     }
@@ -218,7 +219,7 @@ def chosen_route(state: AgentState) -> Literal["respond", "rewrite_query"]:
     if state.get("validation_count", 0) >= MAX_VALIDATION_ATTEMPTS:
         return "respond"
 
-    return "rewrite_query"
+    return "rewrite_query" 
 
 
 

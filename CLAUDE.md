@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Formula 1 Bloomberg Terminal — a data platform that ingests historic F1 race data into a PostgreSQL database and surfaces it through a Bloomberg-style analytics interface. A RAG-based internal chat is planned (custom chunking, embeddings, re-ranking). No live telemetry — historical data only.
+A Formula 1 Bloomberg Terminal — a data platform that ingests historic F1 race data into a PostgreSQL database and surfaces it through a Bloomberg-style analytics interface. A LangGraph-based internal chat routes questions to a regulation RAG subgraph (docs chunked/embedded into MongoDB with Voyage embeddings) or a data-visualization subgraph (text-to-SQL over Postgres). No live telemetry — historical data only.
 
 ## Environment Setup
 
@@ -16,6 +16,10 @@ pip install -r requirements.txt
 Requires a `.env` file at the root:
 ```
 DATABASE_URL=postgresql+psycopg://USER@HOST:PORT/DBNAME
+ANTHROPIC_API_KEY=...        # chatbot LLM (langchain-anthropic default env var)
+VOYAGE_API_KEY=...           # regulation-doc embeddings (voyageai.Client default env var)
+MONGODB_URI=...              # regulation-doc chunk/embedding store (+ GridFS)
+MONGODB_DATABASE_NAME=...    # MongoDB database name for regulation retrieval
 ```
 
 ## Common Commands
@@ -45,14 +49,22 @@ cd frontend && npm run typecheck && npm run build
 ```
 app/
   main.py        # FastAPI app (title: F1 Terminal API), mounts router at /api/v1
-  router/        # One file per resource: seasons, rounds, sessions, results,
-                 # drivers, teams, circuits, championships, meta (+ schemas.py, utils.py)
+  router/        # One file per resource: seasons, rounds, sessions, results, drivers,
+                 # teams, circuits, championships, meta, chatbot (+ schemas.py, utils.py)
     analytics/   # Analytical dataset endpoints under /api/v1/analytics:
                  # championship progression, driver/team/circuit summaries,
                  # status distribution, driver head-to-head (+ schemas.py)
   pipeline/
     ingest/      # Historic data ingest (Pydantic models in models.py, entry point main.py)
-  chatbot/       # RAG chat (early prototype)
+  chatbot/       # LangGraph chat. graph.py compiles `terminal_chat`: router → one of
+                 # {regulation_subgraph, data_visual_subgraph, out_of_scope}. Exposed
+                 # via POST /api/v1/chatbot/chat (router/chatbot.py). state.py holds the
+                 # shared AgentState TypedDict; core/models.py builds the ChatAnthropic LLM.
+    router/      # Route classifier subgraph (REGULATION | VISUALIZATION | OUT_OF_SCOPE)
+    regulation/  # Regulation RAG subgraph: query rewrite → Voyage embed → MongoDB vector
+                 # search over chunked FIA docs → answer synthesis
+    data_visual/ # Text-to-SQL subgraph over Postgres → chart/data answer
+    evals/       # Route-classifier eval datasets + harness
 frontend/        # Vite + React + TS dashboard (Tailwind v4, TanStack Query, ECharts)
   src/
     lib/         # api client, DTO types, query hooks, formatting, data colors
@@ -75,7 +87,8 @@ frontend/        # Vite + React + TS dashboard (Tailwind v4, TanStack Query, ECh
 - Fonts: Wix Madefor Text (UI), Wix Madefor Display, Lora (serif accents),
   JetBrains Mono (data). Imported in main.tsx via @fontsource-variable.
 core/
-  database.py    # psycopg connection helper (get_connection), reads DATABASE_URL from .env
+  database.py    # psycopg connection helper (get_connection, DATABASE_URL) +
+                 # MongoDB URI accessor (MONGODB_URI) for the regulation store
   alembic/
     versions/    # Migration files
     env.py       # Reads DATABASE_URL from .env via python-dotenv

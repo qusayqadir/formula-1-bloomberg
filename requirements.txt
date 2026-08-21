@@ -1,26 +1,27 @@
+# Core / API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.0
+pydantic-settings>=2.3
+httpx>=0.27
+requests>=2.32
+
+# Database / migrations
 sqlalchemy>=2.0
 alembic>=1.13
 psycopg[binary]>=3.2
-pydantic>=2.0
-pydantic-settings>=2.3
-requests>=2.32
+pymongo>=4.17          # gridfs ships inside pymongo — do not add a separate gridfs package
+
+# LLM / chatbot (RAG + LangGraph agents)
 anthropic>=0.40
-fastapi>=0.115
-uvicorn[standard]>=0.30
+langgraph>=1.2
+langchain-anthropic>=1.4
+langchain-text-splitters>=1.1
+voyageai>=0.3          # embeddings
+beautifulsoup4>=4.13   # regulation doc scraping/parsing
+
+# Config / utils
+python-dotenv>=1.0
+
+# Tests
 pytest>=8.0
-httpx>=0.27
-
-#Chatbot
-langgraph==1.2.9
-langchain-anthropic==1.4.8
-langchain-text-splitters==1.1.2
-beautifulsoup4==4.15.0
-requests==2.34.2
-python-dotenv==1.2.2
-pymongo==4.17.0
-
-# Embeddings
-voyageai>=0.3
-# NOTE: gridfs ships inside pymongo (above) — do not add a separate gridfs package
-
-# pypdf>=

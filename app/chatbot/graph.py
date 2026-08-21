@@ -1,27 +1,20 @@
-from app.chatbot import regulation
 from langgraph.graph import (
-    START, 
-    END, 
+    START,
+    END,
     StateGraph
 )
 
 from app.chatbot.state import AgentState
 from app.chatbot.router.graph import router_graph
+from app.chatbot.data_visual.graph import data_visual_graph
 from app.chatbot.regulation.graph import regulation_graph
-# from app.chatbot.data_visual.graph import data_visual_graph
 
-# from app.chatbot.regulation.nodes import (
+def out_of_scope_response(state: AgentState) -> AgentState:
+    return {
+        "final_answer": "I can help with Formula 1 regulations or data analysis questions. Please ask about F1 regulations (technical, financial, operational, or sporting) or questions that can be answered with historical F1 data."
+    }
 
-# )
-
-# from app.chatbot.data_visual.nodes import (
-
-# )
-
-
-
-
-def build_terminal_chat(): 
+def build_terminal_chat():
 
     builder = StateGraph(AgentState)
 
@@ -31,8 +24,16 @@ def build_terminal_chat():
     )
 
     builder.add_node(
-        "regulation",
+        "regulation_subgraph",
         regulation_graph,
+    )
+    builder.add_node(
+        "data_visual_subgraph",
+        data_visual_graph
+    )
+    builder.add_node(
+        "out_of_scope",
+        out_of_scope_response
     )
 
     builder.add_edge(
@@ -40,24 +41,20 @@ def build_terminal_chat():
         "router"
     )
 
-    builder.add_edge(
+    builder.add_conditional_edges(
         "router",
-        "regulation"
+        lambda state: state.get("route", "OUT_OF_SCOPE"),
+        {
+            "REGULATION": "regulation_subgraph",
+            "VISUALIZATION": "data_visual_subgraph",
+            "OUT_OF_SCOPE": "out_of_scope"
+        }
     )
 
     builder.add_edge(
-        "regulation",
+        "out_of_scope",
         END
     )
-
-    # builder.add_conditional_edges(
-    #     "router",
-    #     chosen_route, 
-    #     {"REGULATION" : regulation_subgraph, 
-    #     "VISUALIZATOIN": visualization_subgraph, 
-    #     "OUT_OF_SCOPE": END
-    #     }
-    # )
 
     return builder.compile()
 

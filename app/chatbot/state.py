@@ -1,7 +1,5 @@
 from typing import Literal, TypedDict
 
-from app.chatbot.regulation.prompt import REWRITE_QUERY_PROMPT
-
 
 RouteName = Literal[
     "REGULATION",
@@ -65,6 +63,18 @@ class AgentState(TypedDict, total=False):
     validation_count: int
 
     #DataVis Output
+    list_of_tables: str 
+    table_schemas: str 
+    generated_sql_query: str 
+    generated_sql_confidence: float 
+
+    validate_query_is_valid: bool 
+    validate_sql_response_confidence: float
+    validate_sql_response_reason: str 
+    validation_sql_count: int 
+    data_visual_response: str 
+    # data_visual_output: ?? 
+
 
     #Output
     final_answer: str
