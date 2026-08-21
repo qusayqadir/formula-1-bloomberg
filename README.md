@@ -29,9 +29,9 @@ ANTHROPIC_API_KEY=""
 #Langsmith Configuration 
 LANGSMITH_TRACING=true
 LANGSMITH_ENDPOINT=https://api.smith.langchain.com
-LANGSMITH_API_KEY="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"
-LANGSMITH_PROJECT="formula-1-bloomberg-chat"
-ANTHROPIC_MODEL=claude-sonnet-5
+LANGSMITH_API_KEY=""
+LANGSMITH_PROJECT=""
+ANTHROPIC_MODEL=
 
 #MongoDB Config 
 MONGODB_URI=""
