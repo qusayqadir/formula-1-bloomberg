@@ -13,8 +13,7 @@
 ```
 # DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST:PORT/DATABASE"
 
-#Database connection url![Uploading AWS.F1-Bloomberg.Terminal.Architecture.png…]()
-![Uploading AWS.F1-Bloomberg.Terminal.Architecture.png…]()
+#Database connection url
 
 DATABASE_URL=
 
