@@ -1,4 +1,7 @@
-from typing import Literal, TypedDict
+from typing import Annotated, Literal, TypedDict
+
+from langchain_core.messages import AnyMessage
+from langgraph.graph.message import add_messages
 
 
 RouteName = Literal[
@@ -42,6 +45,8 @@ class AgentState(TypedDict, total=False):
 
     user_query: str
 
+    # Multi-turn history, persisted per thread_id by the checkpointer.
+    messages: Annotated[list[AnyMessage], add_messages]
 
     # Router Output
     route: RouteName

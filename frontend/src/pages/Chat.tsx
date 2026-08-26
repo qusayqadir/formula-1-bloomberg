@@ -8,15 +8,24 @@
  *  with an apple-blue send button. */
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUp, RotateCcw, X } from "lucide-react";
+import { ArrowUp, ChevronDown, RotateCcw, X } from "lucide-react";
 import { useFilters } from "@/state/filters";
 import { ThinkingDots } from "@/components/ui/ThinkingDots";
 import { SiriOrb } from "@/components/ui/SiriOrb";
+
+interface ThinkingEvent {
+  kind: "tool_call" | "reason";
+  node?: string;
+  tool?: string;
+  field?: string;
+  content?: string;
+}
 
 interface Message {
   id: number;
   role: "user" | "assistant";
   content: string;
+  thinking?: ThinkingEvent[];
 }
 
 const SUGGESTIONS = [
@@ -26,24 +35,65 @@ const SUGGESTIONS = [
   "At which circuits does pole convert to a win least often?",
 ];
 
-async function respond(question: string): Promise<string> {
-  try {
-    const response = await fetch("/api/v1/chatbot/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ user_query: question }),
-    });
+interface RawThinkingEvent {
+  kind: "tool_call" | "reason_delta";
+  node?: string;
+  tool?: string;
+  field?: string;
+  content?: string;
+  done?: boolean;
+}
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
+interface StreamHandlers {
+  onThreadId: (threadId: string) => void;
+  onThinking: (event: RawThinkingEvent) => void;
+  onFinal: (content: string) => void;
+}
+
+async function streamChat(
+  question: string,
+  threadId: string | null,
+  handlers: StreamHandlers,
+): Promise<void> {
+  const response = await fetch("/api/v1/chatbot/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_query: question, thread_id: threadId }),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`API error: ${response.statusText}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const raw of events) {
+      const line = raw.trim();
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data === "[DONE]") continue;
+
+      const event = JSON.parse(data) as
+        | { type: "thread"; thread_id: string }
+        | ({ type: "thinking" } & RawThinkingEvent)
+        | { type: "final"; content: string };
+
+      if (event.type === "thread") handlers.onThreadId(event.thread_id);
+      else if (event.type === "thinking") {
+        const { type: _type, ...thinkingEvent } = event;
+        handlers.onThinking(thinkingEvent);
+      } else if (event.type === "final") handlers.onFinal(event.content);
     }
-
-    const data = await response.json();
-    return data.answer;
-  } catch (error) {
-    return `Error: Could not process your question. ${error instanceof Error ? error.message : "Unknown error"}`;
   }
 }
 
@@ -53,14 +103,75 @@ export function ChatPage() {
   const [draft, setDraft] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [liveThinking, setLiveThinking] = useState<ThinkingEvent[]>([]);
+  const [expandedThinking, setExpandedThinking] = useState<Set<number>>(new Set());
   const nextId = useRef(1);
   const replyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const threadIdRef = useRef<string | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Typewriter reveal: text arrives from the network in uneven bursts (a
+  // whole short sentence in one delta, then a multi-second silent gap for
+  // nodes with no reason text). Revealing raw deltas as they land looks
+  // instant-then-frozen. Instead each reason line has a target (the full raw
+  // text received so far) and a revealed length that a single rAF loop
+  // advances at a steady pace, catching up faster if the backlog grows —
+  // same trick Claude/Cursor-style streaming UIs use to look smooth
+  // regardless of network jitter.
+  const revealTargets = useRef<Map<number, string>>(new Map());
+  const revealedLengths = useRef<Map<number, number>>(new Map());
+  const revealRaf = useRef<number | null>(null);
+  const revealLastFrame = useRef(0);
+  const REVEAL_CHARS_PER_SEC = 55;
+
+  const stopReveal = () => {
+    if (revealRaf.current !== null) cancelAnimationFrame(revealRaf.current);
+    revealRaf.current = null;
+    revealTargets.current.clear();
+    revealedLengths.current.clear();
+  };
+
+  const startReveal = () => {
+    if (revealRaf.current !== null) return;
+    revealLastFrame.current = performance.now();
+    const tick = (now: number) => {
+      const dt = now - revealLastFrame.current;
+      revealLastFrame.current = now;
+      setLiveThinking((prev) => {
+        let next: ThinkingEvent[] | null = null;
+        revealTargets.current.forEach((target, idx) => {
+          const revealed = revealedLengths.current.get(idx) ?? 0;
+          if (revealed >= target.length) return;
+          const backlog = target.length - revealed;
+          // Steady pace normally; if a field finished streaming well ahead
+          // of the reveal (e.g. a short reason during a fast node) or the
+          // backlog is large, close the gap faster instead of lagging.
+          const paced = (REVEAL_CHARS_PER_SEC * dt) / 1000;
+          const chars = Math.max(1, Math.round(backlog > 50 ? backlog * 0.12 : paced));
+          const newRevealed = Math.min(target.length, revealed + chars);
+          revealedLengths.current.set(idx, newRevealed);
+          if (!next) next = [...prev];
+          if (next[idx]) next[idx] = { ...next[idx], content: target.slice(0, newRevealed) };
+        });
+        return next ?? prev;
+      });
+      let pending = false;
+      revealTargets.current.forEach((target, idx) => {
+        if ((revealedLengths.current.get(idx) ?? 0) < target.length) pending = true;
+      });
+      if (pending) {
+        revealRaf.current = requestAnimationFrame(tick);
+      } else {
+        revealRaf.current = null;
+      }
+    };
+    revealRaf.current = requestAnimationFrame(tick);
+  };
+
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, thinking]);
+  }, [messages, thinking, liveThinking]);
 
   useEffect(() => () => clearTimeout(replyTimer.current), []);
 
@@ -80,18 +191,84 @@ export function ChatPage() {
     setComposerOpen(true);
     inputRef.current?.focus();
     setThinking(true);
+    setLiveThinking([]);
+    stopReveal();
     clearTimeout(replyTimer.current);
 
+    const assistantId = nextId.current++;
+    const thinkingEvents: ThinkingEvent[] = [];
+    // Maps "node:field" -> index in thinkingEvents/liveThinking for a
+    // reason_delta line that's still being appended to.
+    const openLines = new Map<string, number>();
+
     try {
-      const answer = await respond(question);
+      await streamChat(question, threadIdRef.current, {
+        onThreadId: (threadId) => {
+          threadIdRef.current = threadId;
+        },
+        // Rendered live while the agent works. tool_call lines appear
+        // instantly; reason text is fed into the typewriter reveal buffer
+        // rather than rendered directly, so it plays out at a steady pace
+        // regardless of how bursty the network deltas are. Once the final
+        // answer lands the live feed is cleared and folded into that
+        // message's expandable thinking trace (with the full, untruncated
+        // text — the reveal pacing is a display effect only).
+        onThinking: (event) => {
+          if (event.kind === "tool_call") {
+            const finalized: ThinkingEvent = { kind: "tool_call", node: event.node, tool: event.tool };
+            thinkingEvents.push(finalized);
+            setLiveThinking((prev) => [...prev, finalized]);
+            return;
+          }
+
+          const key = `${event.node}:${event.field}`;
+          const idx = openLines.get(key);
+          if (idx === undefined) {
+            const line: ThinkingEvent = { kind: "reason", node: event.node, field: event.field, content: event.content ?? "" };
+            thinkingEvents.push(line);
+            const newIdx = thinkingEvents.length - 1;
+            openLines.set(key, newIdx);
+            revealTargets.current.set(newIdx, event.content ?? "");
+            revealedLengths.current.set(newIdx, 0);
+            setLiveThinking((prev) => [...prev, { ...line, content: "" }]);
+            startReveal();
+          } else {
+            thinkingEvents[idx] = {
+              ...thinkingEvents[idx],
+              content: (thinkingEvents[idx].content ?? "") + (event.content ?? ""),
+            };
+            revealTargets.current.set(idx, thinkingEvents[idx].content ?? "");
+            startReveal();
+          }
+          if (event.done) openLines.delete(key);
+        },
+        onFinal: (content) => {
+          setThinking(false);
+          setLiveThinking([]);
+          stopReveal();
+          setMessages((m) => [
+            ...m,
+            { id: assistantId, role: "assistant", content, thinking: thinkingEvents },
+          ]);
+        },
+      });
+    } catch (error) {
       setMessages((m) => [
         ...m,
-        { id: nextId.current++, role: "assistant", content: answer },
+        {
+          id: assistantId,
+          role: "assistant",
+          content: `Error: Could not process your question. ${error instanceof Error ? error.message : "Unknown error"}`,
+        },
       ]);
     } finally {
       setThinking(false);
+      setLiveThinking([]);
+      stopReveal();
     }
   };
+
+  useEffect(() => stopReveal, []);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -151,6 +328,42 @@ export function ChatPage() {
                     />
                     <div className="min-w-0">
                       <p className="eyebrow !text-mut">F1 Terminal</p>
+                      {m.thinking && m.thinking.length > 0 && (
+                        <div className="mt-1.5">
+                          <button
+                            onClick={() =>
+                              setExpandedThinking((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(m.id)) next.delete(m.id);
+                                else next.add(m.id);
+                                return next;
+                              })
+                            }
+                            className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] text-mut transition-colors hover:text-sub"
+                          >
+                            <ChevronDown
+                              size={11}
+                              className={`transition-transform ${expandedThinking.has(m.id) ? "rotate-180" : ""}`}
+                            />
+                            Thinking ({m.thinking.length})
+                          </button>
+                          {expandedThinking.has(m.id) && (
+                            <ul className="mt-1.5 space-y-1 border-l border-stroke pl-2.5">
+                              {m.thinking.map((t, i) => (
+                                <li key={i} className="font-mono text-[11px] leading-relaxed text-sub">
+                                  {t.kind === "tool_call" ? (
+                                    <>
+                                      <span className="text-mut">calling</span> {t.tool}
+                                    </>
+                                  ) : (
+                                    t.content
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
                       <p className="mt-1.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
                         {m.content}
                       </p>
@@ -162,13 +375,38 @@ export function ChatPage() {
                 <div className="flex gap-3">
                   <span
                     aria-hidden
-                    className="mt-1 h-4 w-[3px] flex-none -skew-x-12 rounded-[1px] bg-accent"
+                    className="mt-1 h-4 w-[3px] flex-none -skew-x-12 rounded-[1px] bg-accent animate-pulse"
                   />
                   <div className="min-w-0">
                     <p className="eyebrow !text-mut">F1 Terminal</p>
-                    <div className="mt-2">
-                      <ThinkingDots />
-                    </div>
+                    {liveThinking.length === 0 ? (
+                      <div className="mt-2">
+                        <ThinkingDots />
+                      </div>
+                    ) : (
+                      <ul className="mt-1.5 space-y-1">
+                        {liveThinking.map((t, i) => (
+                          <li
+                            key={i}
+                            className="font-mono text-[11px] leading-relaxed text-sub last:text-ink"
+                          >
+                            {t.kind === "tool_call" ? (
+                              <>
+                                <span className="text-mut">calling</span> {t.tool}
+                              </>
+                            ) : (
+                              t.content
+                            )}
+                            {i === liveThinking.length - 1 && (
+                              <span
+                                aria-hidden
+                                className="ml-0.5 inline-block h-[11px] w-[6px] translate-y-[1px] animate-pulse bg-accent/70"
+                              />
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               )}
@@ -244,7 +482,10 @@ export function ChatPage() {
                 />
                 {messages.length > 0 && (
                   <button
-                    onClick={() => setMessages([])}
+                    onClick={() => {
+                      setMessages([]);
+                      threadIdRef.current = null;
+                    }}
                     title="Clear conversation"
                     aria-label="Clear conversation"
                     className="grid h-9 w-9 flex-none place-items-center rounded-full text-mut transition-colors hover:bg-ink/[0.05] hover:text-ink"

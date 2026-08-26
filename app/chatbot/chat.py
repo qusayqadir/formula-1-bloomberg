@@ -1,32 +1,26 @@
-from app.chatbot.graph import terminal_chat
+import asyncio
+import uuid
+
 from dotenv import load_dotenv
+
+from app.chatbot.graph import terminal_chat
 
 load_dotenv()
 
-def main() -> None:
 
-
-    print("F1 chatbot test")
-    print("Type 'exit' to stop.\n")
+async def main() -> None:
+    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
 
     while True:
-        message = input("You: ").strip()
-
-        if message.lower() in {"exit", "quit"}:
+        user_input = input("You: ").strip()
+        if user_input.lower() in {"exit", "quit"}:
             break
-
-        if not message:
+        if not user_input:
             continue
 
-        response = terminal_chat.invoke(
-            {
-                "user_query" : message
-            }
-        )
-
-        print(f"{response["final_answer"]}")
+        response = await terminal_chat.ainvoke({"user_query": user_input}, config=config)
+        print(f"Assistant: {response['final_answer']}\n")
 
 
 if __name__ == "__main__":
-    main()
-
+    asyncio.run(main())

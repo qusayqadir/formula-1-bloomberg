@@ -1,10 +1,9 @@
 - [ ] chatbot
-  - [ ] server-side events to show agent thinking to user
-  - [ ] Add multi-turn chatbot conversation support
+  - [x] server-side events to show agent thinking to user
+  - [x] Add multi-turn chatbot conversation support
   - [ ] Agent response latency
   - [ ] Serve generated SQL via data visual
   - [ ] Store chat sessions (very low priority)
-
 
 - [ ] data?backend
   - [ ] Ingest qualifying results

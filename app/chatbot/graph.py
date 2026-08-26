@@ -1,3 +1,5 @@
+from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import (
     START,
     END,
@@ -12,6 +14,15 @@ from app.chatbot.regulation.graph import regulation_graph
 def out_of_scope_response(state: AgentState) -> AgentState:
     return {
         "final_answer": "I can help with Formula 1 regulations or data analysis questions. Please ask about F1 regulations (technical, financial, operational, or sporting) or questions that can be answered with historical F1 data."
+    }
+
+def record_turn(state: AgentState) -> AgentState:
+    """Appends this turn to the thread's message history (persisted via the checkpointer)."""
+    return {
+        "messages": [
+            HumanMessage(content=state["user_query"]),
+            AIMessage(content=state["final_answer"]),
+        ]
     }
 
 def build_terminal_chat():
@@ -35,6 +46,10 @@ def build_terminal_chat():
         "out_of_scope",
         out_of_scope_response
     )
+    builder.add_node(
+        "record_turn",
+        record_turn
+    )
 
     builder.add_edge(
         START,
@@ -51,14 +66,12 @@ def build_terminal_chat():
         }
     )
 
-    builder.add_edge(
-        "out_of_scope",
-        END
-    )
+    builder.add_edge("regulation_subgraph", "record_turn")
+    builder.add_edge("data_visual_subgraph", "record_turn")
+    builder.add_edge("out_of_scope", "record_turn")
+    builder.add_edge("record_turn", END)
 
-    return builder.compile()
+    return builder.compile(checkpointer=InMemorySaver())
 
 
-terminal_chat = build_terminal_chat() 
-g = terminal_chat.get_graph()
-open("final-chat-graph.png", "wb").write(g.draw_mermaid_png())
+terminal_chat = build_terminal_chat()
