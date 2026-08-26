@@ -26,8 +26,8 @@ class RetrievedDocumentMetadata(BaseModel):
 
 
 class RegulationAnswer(BaseModel):
-    answer: str
     confidence: float
+    answer: str
 
 
 class ValidationResponse(BaseModel):

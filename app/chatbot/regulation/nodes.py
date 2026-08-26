@@ -113,14 +113,21 @@ def retrieve_docs(state: AgentState):
         }
     ])
 
-    #include keyword search for hybrid search 
+    docs = list(cursor)
+    for d in docs:
+        d["_id"] = str(d["_id"])
+
+    #include keyword search for hybrid search
     return {
-        "retrieved_docs": list(cursor)
+        "retrieved_docs": docs
     }
 
 def rerank_docs(state: AgentState):
 
     docs = state["retrieved_docs"]
+
+    if not docs:
+        return {"reranked_docs": []}
 
     reranked = vo.rerank(
         query=state["user_query"],
@@ -223,8 +230,21 @@ def chosen_route(state: AgentState) -> Literal["respond", "rewrite_query"]:
 
 
 
-def respond(state: AgentState) -> AgentState: 
-    
+LOW_CONFIDENCE_PREFIX = (
+    "I couldn't find a fully confident answer to your question in the FIA "
+    "regulation documents, but here is the closest relevant information I found:\n\n"
+)
+
+def respond(state: AgentState) -> AgentState:
+
+    is_valid = state.get("validate_response_is_valid", False)
+    confidence = state.get("validate_response_confidence") or 0.0
+    ran_out_of_attempts = state.get("validation_count", 0) >= MAX_VALIDATION_ATTEMPTS
+
+    answer = state["regulation_response"]
+    if ran_out_of_attempts and not (is_valid and confidence >= 0.7):
+        answer = LOW_CONFIDENCE_PREFIX + answer
+
     return {
-        "final_answer": state["regulation_response"]
+        "final_answer": answer
     }

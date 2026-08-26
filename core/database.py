@@ -6,7 +6,8 @@ import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
 
-from pymongo import MongoClient 
+import certifi
+from pymongo import MongoClient
 
 load_dotenv()
 
@@ -33,7 +34,6 @@ def get_db() -> Iterator[psycopg.Connection]:
 def get_mongo_url() -> str: 
     return os.getenv("MONGODB_URI")
 
-def get_mongo_connection(): 
-    
-    client = MongoClient(get_mongo_url())
-    return client 
+def get_mongo_connection():
+    client = MongoClient(get_mongo_url(), tlsCAFile=certifi.where())
+    return client

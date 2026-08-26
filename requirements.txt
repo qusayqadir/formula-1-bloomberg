@@ -11,6 +11,7 @@ sqlalchemy>=2.0
 alembic>=1.13
 psycopg[binary]>=3.2
 pymongo>=4.17          # gridfs ships inside pymongo — do not add a separate gridfs package
+certifi>=2024.0.0      # CA bundle for Atlas TLS verification
 
 # LLM / chatbot (RAG + LangGraph agents)
 anthropic>=0.40

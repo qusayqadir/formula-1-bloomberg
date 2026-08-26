@@ -119,12 +119,17 @@ Never fabricate support for an answer.
 
 ## Confidence
 
-Also return a confidence score between 0.0 and 1.0 reflecting how well the
-retrieved context supports the answer:
+You must populate the `confidence` output field with a number between 0.0 and
+1.0 reflecting how well the retrieved context supports the answer:
 
 * 0.9-1.0 — the retrieved articles directly and unambiguously answer the question.
 * 0.5-0.8 — the retrieved context is relevant but partial, indirect, or requires interpretation.
 * 0.0-0.4 — the retrieved context is missing, irrelevant, or contradictory.
+
+The `confidence` field is a separate structured output field, not part of the
+`answer` text. Never write the confidence score, or any tag/label describing
+it, inside the `answer` field — `answer` must contain only the natural-language
+answer itself.
 """
 
 

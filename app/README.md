@@ -1,9 +1,12 @@
 - [ ] chatbot
   - [x] server-side events to show agent thinking to user
   - [x] Add multi-turn chatbot conversation support
-  - [ ] Agent response latency
-  - [ ] Serve generated SQL via data visual
-  - [ ] Store chat sessions (very low priority)
+  - [ ] build evals for regulation docs 
+    - [ ] decide on a threshold accuracy and lifecycle add FIA regs for prev seasons 
+  - [ ] imporve agent response latency ( imporve ux while waiting for response ? ) 
+  - [ ] take generated sql data and build image to server via data vis graph
+  - [ ] add keyword search to acoomplish hybrid search 
+  - [ ] store chat sessions (very low priority) 
 
 - [ ] data?backend
   - [ ] Ingest qualifying results
@@ -16,4 +19,5 @@
   - [ ] s3 static files
     - [ ] team profile images + metadata? 
     - [ ] track images 
-  - [ ] Move regulation docs onto AWS-managed MongoDB
+  - [x] Move regulation docs onto AWS-managed Mongodb
+  - [ ] config elastic ip for ec2 instance and add it to accepted network ips for atlas
