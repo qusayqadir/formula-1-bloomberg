@@ -74,7 +74,7 @@ def sql_table_schema(table_names: str) -> str:
             if columns:
                 col_names = [col["column_name"] for col in columns]
                 col_types = [col["data_type"] for col in columns]
-                schema_str = f"CREATE TABLE {table_name} (\n"
+                schema_str = f"CREATE TABLE bronze.{table_name} (\n"
                 schema_str += ",\n".join(
                     f"  {name} {dtype}"
                     for name, dtype in zip(col_names, col_types)
