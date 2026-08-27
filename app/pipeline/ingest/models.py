@@ -114,6 +114,7 @@ class SessionEntryModel(BaseModel):
         return f"{self.round_entry_api_id}_{session_type}"
 
 
+
 # ── Championship ───────────────────────────────────────────────────────────────
 
 class TeamDriverModel(BaseModel):

@@ -20,6 +20,9 @@ def expand_sessions(rounds: list[RoundModel]) -> list[SessionModel]:
         ("FP2",              lambda r: r.SecondPractice),
         ("FP3",              lambda r: r.ThirdPractice),
         ("Qualifying",       lambda r: r.Qualifying),
+        ("Quali_Q1",         lambda r: r.Qualifying),
+        ("Quali_Q2",         lambda r: r.Qualifying),
+        ("Quali_Q3",         lambda r: r.Qualifying),
         ("Sprint",           lambda r: r.Sprint),
         ("SprintQualifying", lambda r: r.SprintQualifying),
     ]

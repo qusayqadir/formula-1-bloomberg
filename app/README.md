@@ -9,9 +9,11 @@
   - [ ] store chat sessions (very low priority) 
 
 - [ ] data?backend
-  - [ ] Ingest qualifying results
-  - [ ] Ingest sprint qualifying results
-  - [ ] Ingest sprint results
+  - [x] Ingest qualifying results
+  - [ ] ~~Ingest sprint qualifying results ( no data )~~ 
+  - [x] Ingest sprint results
+  - [ ] fix design for historical data to enable automatoin 
+    - [ ] incremental poller, checkpointing, logging, reconciliation if upstream data corrects itself later
   - [ ] Work on team profiles
   - [ ] Polymarket and Kalshi betting odds
 

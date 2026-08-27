@@ -38,6 +38,45 @@ export interface TeamRef {
   primary_color: string | null;
 }
 
+/** GET /teams, GET /teams/{id} */
+export interface Team {
+  id: number;
+  api_id: string;
+  name: string;
+  nationality: string | null;
+  country_code: string | null;
+  primary_color: string | null;
+  wikipedia: string | null;
+}
+
+/** GET /drivers, GET /drivers/{id} */
+export interface Driver {
+  id: number;
+  api_id: string;
+  reference: string | null;
+  forename: string;
+  surname: string;
+  abbreviation: string | null;
+  permanent_car_number: number | null;
+  date_of_birth: string | null;
+  nationality: string | null;
+  country_code: string | null;
+  wikipedia: string | null;
+}
+
+/** GET /teams/{id}/drivers, GET /drivers/{id}/seasons — a seat held for one season. */
+export interface TeamDriver {
+  id: number;
+  api_id: string;
+  season_id: number;
+  year: number;
+  team_id: number;
+  team_name: string;
+  driver_id: number;
+  driver_forename: string;
+  driver_surname: string;
+}
+
 export interface Circuit {
   id: number;
   api_id: string;
@@ -142,6 +181,13 @@ export interface ResultAggregates {
   total_laps_completed: number | null;
   avg_laps_completed: number | null;
   classification_rate: number | null;
+}
+
+export interface DriverSummaryRow extends ResultAggregates {
+  driver: DriverRef;
+  year: number | null;
+  circuit_id: number | null;
+  circuit_name: string | null;
 }
 
 export interface TeamSummaryRow extends ResultAggregates {

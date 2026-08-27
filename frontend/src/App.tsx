@@ -11,6 +11,10 @@ import { ChatPage } from "@/pages/Chat";
 const CalendarPage = lazy(() =>
   import("@/features/calendar/CalendarPage").then((m) => ({ default: m.CalendarPage })),
 );
+// google maps JS is heavy — split the team profiles page out of the main bundle
+const TeamProfilesPage = lazy(() =>
+  import("@/features/team-profiles/TeamProfilesPage").then((m) => ({ default: m.TeamProfilesPage })),
+);
 import { ComingSoon } from "@/pages/ComingSoon";
 import { Creator } from "@/pages/Creator";
 import { DocsApis } from "@/pages/DocsApis";
@@ -47,7 +51,14 @@ const router = createBrowserRouter([
         ),
       },
       { path: "/track-walk", element: stub("Track Walk", "Circuit deep-dives with corner-by-corner geography.") },
-      { path: "/teams", element: stub("Team Profiles", "Constructor histories, liveries and season-by-season records.") },
+      {
+        path: "/teams",
+        element: (
+          <Suspense fallback={<div className="h-full" style={{ background: "#050608" }} />}>
+            <TeamProfilesPage />
+          </Suspense>
+        ),
+      },
       { path: "/chat", element: <ChatPage /> },
       { path: "/archived", element: stub("Archived", "Saved analytical views and shared dashboard snapshots.") },
       { path: "/live", element: stub("Live Dashboard", "Deferred — the platform is historical-only until a telemetry source is ingested.") },

@@ -232,6 +232,179 @@ def fetch_race_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel], 
     
     return team_drivers, round_entries, session_entries
 
+
+# session_api_id = f"{season}_{round_number}_Quali_Q1"
+# {season}_{round_number}_Quali_Q2"
+# {season}_{round_number}_Quali_Q3"
+# need postiion (position), fastest lap is the quali time 
+# thats all i need, there is no sprint quali in jolpica? 
+
+def fetch_quali_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel], list[SessionEntryModel]]:
+    seen_drivers = set()
+    team_drivers = []
+    round_entries = []
+    session_entries = []
+
+    for year in range(2011, datetime.now().year):
+        offset = 0
+        limit = 100
+        while True:
+            response = _get_with_retry(
+                f"{BASE_URL}/{year}/qualifying.json", params={"limit": limit, "offset": offset}
+            )
+            response.raise_for_status()
+            data = response.json()["MRData"]
+            for race in data["RaceTable"]["Races"]:
+                season = race["season"]
+                round_number = race["round"]
+                round_api_id = f"{season}_{round_number}"
+
+                for quali_result in race["QualifyingResults"]:
+                    driver_id = quali_result["Driver"]["driverId"]
+                    constructor_id = quali_result["Constructor"]["constructorId"]
+
+                    raw_number = quali_result.get("number")
+                    car_number = int(raw_number) if raw_number else None
+
+                    quali_final_pos = quali_result["position"]
+                    q1_quali_time = quali_result.get("Q1") or None
+                    q2_quali_time = quali_result.get("Q2") or None
+                    q3_quali_time = quali_result.get("Q3") or None
+
+                    round_entry_api_id = f"{season}_{round_number}_{driver_id}_{constructor_id}"
+
+                    # A driver can appear in qualifying without ever appearing in the race
+                    # results (DNS, withdrawn, etc.), so team_driver/round_entry rows can't be
+                    # assumed to already exist from fetch_race_results — ensure them here too.
+                    round_entries.append(
+                        RoundEntryModel(
+                            round_api_id=round_api_id,
+                            season=season,
+                            driver_id=driver_id,
+                            constructor_id=constructor_id,
+                            car_number=car_number,
+                        )
+                    )
+
+                    key = (season, driver_id, constructor_id)
+                    if key not in seen_drivers:
+                        seen_drivers.add(key)
+                        team_drivers.append(TeamDriverModel(driverId=driver_id, constructorId=constructor_id, season=season))
+
+                    session_entries.extend([
+                        SessionEntryModel(
+                            round_entry_api_id=round_entry_api_id,
+                            session_api_id=f"{season}_{round_number}_Quali_Q1",
+                            position=quali_final_pos,
+                            fastest_lap_time=q1_quali_time,
+                        ),
+                        SessionEntryModel(
+                            round_entry_api_id=round_entry_api_id,
+                            session_api_id=f"{season}_{round_number}_Quali_Q2",
+                            position=quali_final_pos,
+                            fastest_lap_time=q2_quali_time,
+                        ),
+                        SessionEntryModel(
+                            round_entry_api_id=round_entry_api_id,
+                            session_api_id=f"{season}_{round_number}_Quali_Q3",
+                            position=quali_final_pos,
+                            fastest_lap_time=q3_quali_time,
+                        ),
+                    ])
+
+            offset += limit
+            if offset >= int(data["total"]):
+                break
+
+    return team_drivers, round_entries, session_entries
+
+def fetch_sprint_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel], list[SessionEntryModel]]:
+    seen_drivers = set()
+    team_drivers = []
+    round_entries = []
+    session_entries = []
+
+    for year in range(2011, datetime.now().year):
+        offset = 0
+        limit = 100
+        while True:
+            response = _get_with_retry(
+                f"{BASE_URL}/{year}/sprint.json", params={"limit": limit, "offset": offset}
+            )
+            response.raise_for_status()
+            data = response.json()["MRData"]
+            for race in data["RaceTable"]["Races"]:
+                season = race["season"]
+                round_number = race["round"]
+                round_api_id = f"{season}_{round_number}"
+
+                for sprint_results in race["SprintResults"]:
+                    driver_id = sprint_results["Driver"]["driverId"]
+                    constructor_id = sprint_results["Constructor"]["constructorId"]
+
+                    raw_number = sprint_results.get("number")
+                    car_number = int(raw_number) if raw_number else None
+
+                    raw_pos = sprint_results.get("position")
+                    position = int(raw_pos) if raw_pos else None
+
+                    raw_grid = sprint_results.get("grid")
+                    grid_pos = int(raw_grid) if raw_grid else None
+
+                    status = sprint_results.get("status")
+
+                    raw_laps = sprint_results.get("laps")
+                    laps = int(raw_laps) if raw_laps else None
+
+                    raw_points = sprint_results.get("points")
+                    points = float(raw_points) if raw_points else None
+
+                    fastest_lap_data = sprint_results.get("FastestLap", {})
+                    fastest_lap_time = fastest_lap_data.get("Time", {}).get("time") or None
+                    raw_fastest_lap_rank = fastest_lap_data.get("rank")
+                    fastest_lap_rank = int(raw_fastest_lap_rank) if raw_fastest_lap_rank else None
+
+                    round_entry_api_id = f"{season}_{round_number}_{driver_id}_{constructor_id}"
+
+                    # Same as qualifying: a driver can be in the sprint without being in the
+                    # main race results, so ensure team_driver/round_entry rows here too.
+                    round_entries.append(
+                        RoundEntryModel(
+                            round_api_id=round_api_id,
+                            season=season,
+                            driver_id=driver_id,
+                            constructor_id=constructor_id,
+                            car_number=car_number,
+                        )
+                    )
+
+                    key = (season, driver_id, constructor_id)
+                    if key not in seen_drivers:
+                        seen_drivers.add(key)
+                        team_drivers.append(TeamDriverModel(driverId=driver_id, constructorId=constructor_id, season=season))
+
+                    session_entries.extend([
+                        SessionEntryModel(
+                            round_entry_api_id=round_entry_api_id,
+                            session_api_id=f"{season}_{round_number}_Sprint",
+                            position=position,
+                            points=points,
+                            grid=grid_pos,
+                            laps_completed=laps,
+                            race_time=sprint_results.get("Time", {}).get("time") or None,
+                            fastest_lap_time=fastest_lap_time,
+                            fastest_lap_rank=fastest_lap_rank,
+                            status=status,
+                        )
+                    ])
+
+            offset += limit
+            if offset >= int(data["total"]):
+                break
+
+    return team_drivers, round_entries, session_entries
+
+
 def fetch_all_standings() -> tuple[list[TeamChampionshipModel], list[DriverChampionshipModel]]:
     """
     Fetches constructor and driver standings in a single loop per year so that
@@ -407,7 +580,7 @@ def insert_team_drivers(conn, team_drivers: list[TeamDriverModel]) -> None:
                 (SELECT id FROM bronze.team WHERE api_id = %s),
                 (SELECT id FROM bronze.drivers WHERE api_id = %s),
                 (SELECT id FROM bronze.season WHERE api_id = %s),
-                %s, %s
+                %s
             )
             ON CONFLICT (api_id) DO NOTHING
             """,
@@ -416,7 +589,6 @@ def insert_team_drivers(conn, team_drivers: list[TeamDriverModel]) -> None:
                 driver.driverId,
                 driver.season,
                 driver.api_id,
-                driver.role,
             )
         )
     conn.commit()
@@ -449,7 +621,7 @@ def insert_session_entries(conn, session_entries: list[SessionEntryModel]) -> No
             """
             INSERT INTO bronze.session_entry
                 (session_id, round_entry_id, api_id, position, status, points,
-                 grid, time, fastest_lap_rank, laps_completed)
+                 grid, fastest_lap_time, fastest_lap_rank, laps_completed)
             VALUES (
                 (SELECT id FROM bronze.session     WHERE api_id = %s),
                 (SELECT id FROM bronze.round_entry WHERE api_id = %s),
@@ -465,7 +637,7 @@ def insert_session_entries(conn, session_entries: list[SessionEntryModel]) -> No
                 se.status,
                 se.points,
                 se.grid,
-                se.race_time,
+                se.race_time or se.fastest_lap_time,
                 se.fastest_lap_rank,
                 se.laps_completed,
             ),

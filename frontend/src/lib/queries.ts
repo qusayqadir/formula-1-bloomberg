@@ -8,7 +8,9 @@ import type {
   Circuit,
   CircuitRacecraftRow,
   CircuitSummaryRow,
+  Driver,
   DriverRef,
+  DriverSummaryRow,
   GridFinishDensityRow,
   HeadToHead,
   Page,
@@ -16,6 +18,8 @@ import type {
   SessionResult,
   SessionType,
   SummaryResponse,
+  Team,
+  TeamDriver,
   TeamRef,
   TeamSummaryRow,
 } from "@/lib/types";
@@ -167,6 +171,59 @@ export function useCircuits() {
   return useQuery({
     queryKey: ["circuits"],
     queryFn: () => fetchJson<Page<Circuit>>("/circuits", { limit: 500 }),
+    ...FOREVER,
+  });
+}
+
+/** Teams that entered a given season — the Team Profiles selector strip. */
+export function useTeams(year: number) {
+  return useQuery({
+    queryKey: ["teams", year],
+    queryFn: () => fetchJson<Page<Team>>("/teams", { year, limit: 50 }),
+    ...FOREVER,
+  });
+}
+
+/** A team's driver line-up for one season (expected: 2 seats). */
+export function useTeamRoster(teamId: number | null, year: number) {
+  return useQuery({
+    queryKey: ["team-roster", teamId, year],
+    queryFn: () => fetchJson<TeamDriver[]>(`/teams/${teamId}/drivers`, { year }),
+    enabled: teamId != null,
+    ...FOREVER,
+  });
+}
+
+/** Career (all-time, no year filter) aggregate for one driver — wins/starts/podiums. */
+export function useDriverCareer(driverId: number | null) {
+  return useQuery({
+    queryKey: ["driver-career", driverId],
+    queryFn: () =>
+      fetchJson<SummaryResponse<DriverSummaryRow>>("/analytics/drivers/summary", {
+        driver_id: driverId!,
+        group_by: "driver",
+      }),
+    enabled: driverId != null,
+    ...FOREVER,
+  });
+}
+
+/** Every seat a driver has held, ordered by year — first/current team. */
+export function useDriverSeasons(driverId: number | null) {
+  return useQuery({
+    queryKey: ["driver-seasons", driverId],
+    queryFn: () => fetchJson<TeamDriver[]>(`/drivers/${driverId}/seasons`),
+    enabled: driverId != null,
+    ...FOREVER,
+  });
+}
+
+/** Driver bio (name, DOB, nationality) for the Team Profiles driver card. */
+export function useDriver(driverId: number | null) {
+  return useQuery({
+    queryKey: ["driver", driverId],
+    queryFn: () => fetchJson<Driver>(`/drivers/${driverId}`),
+    enabled: driverId != null,
     ...FOREVER,
   });
 }

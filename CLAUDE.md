@@ -109,6 +109,12 @@ Run the ingest as a module from the repo root: `python -m app.pipeline.ingest.ma
 - `session_entry.status` loses DNF cause detail from 2023 onward: 2011–2022 carry
   specific causes (Engine, Collision…), 2023–2025 are almost all generic "Retired".
   The reliability widget's cause buckets are only meaningful pre-2023.
+- Team Profiles page: factory location, pit-wall personnel, and reserve driver have
+  no backing table at all (not just NULL — the columns don't exist), and neither
+  drivers nor teams have a photo/headshot field. These render as UI-only placeholder
+  scaffolding (`frontend/src/features/team-profiles/placeholders.ts`, `Silhouette`
+  component) with no fabricated data. Career pole-position count is also unavailable
+  at driver grain (only exposed per-circuit via `/analytics/circuits/racecraft`).
 
 ### Key Conventions
 
