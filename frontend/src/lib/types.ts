@@ -6,6 +6,9 @@ export type SessionType =
   | "FP2"
   | "FP3"
   | "Qualifying"
+  | "Quali_Q1"
+  | "Quali_Q2"
+  | "Quali_Q3"
   | "Race"
   | "Sprint"
   | "SprintQualifying";
@@ -281,4 +284,18 @@ export interface HeadToHead {
     b_avg_grid: number | null;
   };
   rows: HeadToHeadRow[];
+}
+
+export interface QualifyingSegmentRow {
+  driver: DriverRef;
+  team: TeamRef;
+  final_position: number | null;
+  q1_time: string | null;
+  q2_time: string | null;
+  q3_time: string | null;
+}
+
+export interface QualifyingSegmentsResponse {
+  metadata: Record<string, unknown>;
+  rows: QualifyingSegmentRow[];
 }

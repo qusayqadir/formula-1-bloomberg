@@ -9,7 +9,7 @@ import { useSeasonResults } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import { focusRound, roundsFromResults, rowsForRound, visibleDriverIds } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
-import { durationToSeconds, formatLapTime, formatPoints, sanitizeLapSeconds, shortRoundName } from "@/lib/format";
+import { durationToSeconds, formatLapTime, formatPoints, sanitizeLapSeconds, sessionLabel, shortRoundName } from "@/lib/format";
 import type { SessionResult, SessionType } from "@/lib/types";
 
 type SortKey = "position" | "grid" | "points" | "laps_completed" | "fastest_lap" | "delta";
@@ -78,15 +78,15 @@ export function SessionResultsTable(props: {
 
   return (
     <AnalyticsCard
-      eyebrow={`${session} · Classification`}
-      title={shortRoundName(roundName) || `${session} results`}
-      subtitle={round ? `R${round} · ${session} · ${filters.year}` : String(filters.year)}
+      eyebrow={`${sessionLabel(session)} · Classification`}
+      title={shortRoundName(roundName) || `${sessionLabel(session)} results`}
+      subtitle={round ? `R${round} · ${sessionLabel(session)} · ${filters.year}` : String(filters.year)}
       loading={query.isPending}
       refreshing={query.isFetching && !query.isPending}
       error={query.error as Error | null}
       onRetry={() => query.refetch()}
       empty={!query.isPending && !query.error && rows.length === 0}
-      emptyText={`No ${session} entries for this selection — only Race sessions have ingested results so far.`}
+      emptyText={`No ${sessionLabel(session)} entries for this selection.`}
       expandable
       className={props.className}
       bodyClassName="overflow-auto"

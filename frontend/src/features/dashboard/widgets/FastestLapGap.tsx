@@ -8,7 +8,7 @@ import { useSeasonResults } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import { focusRound, roundsFromResults, rowsForRound, visibleDriverIds } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
-import { durationToSeconds, driverCode, sanitizeLapSeconds, shortRoundName } from "@/lib/format";
+import { durationToSeconds, driverCode, sanitizeLapSeconds, sessionLabel, shortRoundName } from "@/lib/format";
 import type { SessionType } from "@/lib/types";
 
 const CONFIG = { gap: { label: "Gap to fastest (s)", color: "blue" } } as const;
@@ -42,7 +42,7 @@ export function FastestLapGap(props: {
 
   return (
     <AnalyticsCard
-      eyebrow={`${session} · Fastest laps`}
+      eyebrow={`${sessionLabel(session)} · Fastest laps`}
       title="Gap to fastest"
       subtitle={round ? `R${round} ${shortRoundName(roundName)}` : undefined}
       loading={query.isPending}

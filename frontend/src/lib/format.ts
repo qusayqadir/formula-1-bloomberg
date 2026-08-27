@@ -66,6 +66,17 @@ export function driverName(d: { forename: string; surname: string }): string {
   return `${d.forename} ${d.surname}`;
 }
 
+const SESSION_LABELS: Record<string, string> = {
+  Quali_Q1: "Qualifying (Q1)",
+  Quali_Q2: "Qualifying (Q2)",
+  Quali_Q3: "Qualifying (Q3)",
+};
+
+/** Display label for a session type — segment sessions get a readable form. */
+export function sessionLabel(sessionType: string): string {
+  return SESSION_LABELS[sessionType] ?? sessionType;
+}
+
 /** "Bahrain Grand Prix" → "Bahrain" (dense axis labels). */
 export function shortRoundName(name: string | null | undefined): string {
   if (!name) return "";

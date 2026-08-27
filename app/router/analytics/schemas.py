@@ -260,3 +260,19 @@ class DriverHeadToHead(BaseModel):
     driver_b: DriverRef
     summary: HeadToHeadSummary
     rows: list[HeadToHeadSessionRow]
+
+
+# ── qualifying segments (Q1/Q2/Q3 times for a single round) ────────────────
+
+class QualifyingSegmentRow(BaseModel):
+    driver: DriverRef
+    team: TeamRef
+    final_position: Optional[int] = None
+    q1_time: Optional[timedelta] = None
+    q2_time: Optional[timedelta] = None
+    q3_time: Optional[timedelta] = None
+
+
+class QualifyingSegmentsResponse(BaseModel):
+    metadata: dict[str, Any]
+    rows: list[QualifyingSegmentRow]

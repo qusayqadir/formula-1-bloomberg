@@ -20,6 +20,8 @@ import { SeasonSunburst } from "@/features/dashboard/widgets/SeasonSunburst";
 import { HorizonDeltas } from "@/features/dashboard/widgets/HorizonDeltas";
 import { GridFinishHexbin } from "@/features/dashboard/widgets/GridFinishHexbin";
 import { CircuitMatrix } from "@/features/dashboard/widgets/CircuitMatrix";
+import { QualifyingSegments } from "@/features/dashboard/widgets/QualifyingSegments";
+import { QualifyingSegmentsTable } from "@/features/dashboard/widgets/QualifyingSegmentsTable";
 
 export function HistoricalDashboard() {
   const { filters } = useFilters();
@@ -75,17 +77,15 @@ export function HistoricalDashboard() {
         <GridFinishSlope entities={entities} className="h-[400px] md:col-span-1 xl:col-span-4" />
         <FastestLapGap entities={entities} className="h-[400px] md:col-span-1 xl:col-span-3" />
 
-        {/* qualifying — results + gap to fastest (data lands with the quali ingest) */}
-        <SessionResultsTable entities={entities} sessionType="Qualifying" className="h-[400px] md:col-span-2 xl:col-span-8" />
-        <FastestLapGap entities={entities} sessionType="Qualifying" className="h-[400px] md:col-span-2 xl:col-span-4" />
+        {/* qualifying — Q1/Q2/Q3 segment times are stored as three synthetic
+            sessions sharing the overall final position (no per-segment position) */}
+        <QualifyingSegments entities={entities} className="h-[460px] md:col-span-2 xl:col-span-7" />
+        <QualifyingSegmentsTable entities={entities} className="h-[460px] md:col-span-2 xl:col-span-5" />
 
         {/* sprint — results + grid→finish + gap to fastest */}
         <SessionResultsTable entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-2 xl:col-span-5" />
         <GridFinishSlope entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-1 xl:col-span-4" />
         <FastestLapGap entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-1 xl:col-span-3" />
-
-        {/* sprint qualifying — results */}
-        <SessionResultsTable entities={entities} sessionType="SprintQualifying" className="h-[400px] md:col-span-2 xl:col-span-12" />
 
         <ResultsHeatmap entities={entities} className="h-[460px] md:col-span-2 xl:col-span-8" />
         <HeadToHead entities={entities} className="h-[460px] md:col-span-2 xl:col-span-4" />

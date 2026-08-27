@@ -14,6 +14,7 @@ import type {
   GridFinishDensityRow,
   HeadToHead,
   Page,
+  QualifyingSegmentsResponse,
   Round,
   SessionResult,
   SessionType,
@@ -190,6 +191,21 @@ export function useTeamRoster(teamId: number | null, year: number) {
     queryKey: ["team-roster", teamId, year],
     queryFn: () => fetchJson<TeamDriver[]>(`/teams/${teamId}/drivers`, { year }),
     enabled: teamId != null,
+    ...FOREVER,
+  });
+}
+
+/** Q1/Q2/Q3 times + final position for every driver in one round, pivoted
+ *  from the three synthetic Quali_Q1/Q2/Q3 sessions into one row per driver. */
+export function useQualifyingSegments(year: number, roundNumber: number | null) {
+  return useQuery({
+    queryKey: ["quali-segments", year, roundNumber],
+    queryFn: () =>
+      fetchJson<QualifyingSegmentsResponse>("/analytics/qualifying/segments", {
+        year,
+        round_number: roundNumber!,
+      }),
+    enabled: roundNumber != null,
     ...FOREVER,
   });
 }
