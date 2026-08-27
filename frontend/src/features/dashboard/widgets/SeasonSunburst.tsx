@@ -7,12 +7,14 @@ import type { EChartsOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
 import { MONO, useChartTheme } from "@/components/charts/theme";
-import { teamColor, withAlpha } from "@/lib/colors";
+import { teamColor, mixHex } from "@/lib/colors";
 import { useSeatMap } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import { driverCode } from "@/lib/format";
 
-const SEAT_ALPHA = [0.95, 0.7, 0.5, 0.35];
+// Flat shade steps (mixed toward the card surface, not alpha) so teammate
+// wedges stay solid and crisp instead of reading as a translucent gradient.
+const SEAT_SHADE = [0, 0.22, 0.4, 0.55];
 
 export function SeasonSunburst(props: { className?: string }) {
   const { filters } = useFilters();
@@ -57,7 +59,9 @@ export function SeasonSunburst(props: { className?: string }) {
           .map((seat, i) => ({
             name: seat.name,
             value: seat.value,
-            itemStyle: { color: withAlpha(team.color, SEAT_ALPHA[Math.min(i, SEAT_ALPHA.length - 1)]) },
+            itemStyle: {
+              color: mixHex(team.color, t.surface, SEAT_SHADE[Math.min(i, SEAT_SHADE.length - 1)]),
+            },
           })),
       }));
 

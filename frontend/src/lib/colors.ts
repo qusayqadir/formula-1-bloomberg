@@ -181,7 +181,8 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255}, ${alpha})`;
 }
 
-function mixHex(a: string, b: string, t: number): string {
+/** Mix two hex colors, t=0 → a, t=1 → b. */
+export function mixHex(a: string, b: string, t: number): string {
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);
   const ch = (sa: number, sb: number) => Math.round(sa + (sb - sa) * t);
