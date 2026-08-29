@@ -1,6 +1,7 @@
-from pydantic import BaseModel, computed_field
+from ast import Index
 from typing import Optional
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from pydantic import BaseModel, computed_field
 
 
 # ── Core Entities ──────────────────────────────────────────────────────────────
@@ -112,6 +113,59 @@ class SessionEntryModel(BaseModel):
         # session_api_id is e.g. "2011_1_Race" — extract the type from the end
         session_type = self.session_api_id.rsplit("_", 1)[-1]
         return f"{self.round_entry_api_id}_{session_type}"
+
+
+class LapModel(BaseModel): 
+
+    session_api_id: str
+    lap_number: int
+    driver: str
+    driver_pos: Optional[int] = None
+    lap_time: Optional[str] = None
+
+    @computed_field
+    def lap_time_seconds(self) -> Optional[float]:
+        if not self.lap_time:
+            return None
+        try:
+            min_str, sec_str = self.lap_time.split(":")
+            minutes = int(min_str)
+            seconds = float(sec_str)
+            return (minutes * 60 )  + seconds
+        except (ValueError, IndexError):
+            raise ValueError("ivalid expected laptime value")
+
+    @computed_field 
+    def api_id(self) ->str: 
+        return f"{self.session_api_id}_{self.driver}_{self.lap_number}"
+
+
+
+class PitStopModel(BaseModel):
+
+    session_api_id: str
+
+    lap_api_id: str
+
+    driver: str
+    pitstop_number: Optional[int] = None
+    duration: Optional[str] = None
+
+    @computed_field
+    def duration_seconds(self) -> Optional[float]:
+        if not self.duration:
+            return None
+        try:
+            return float(self.duration)
+        except ValueError:
+            raise ValueError("invalid expected pitstop duration value")
+
+
+    @computed_field
+    def api_id(self) -> str:
+        return f"{self.session_api_id}_{self.driver}_{self.pitstop_number}"
+
+
 
 
 

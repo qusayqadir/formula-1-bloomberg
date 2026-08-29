@@ -194,7 +194,10 @@ def rewrite_query(state: AgentState) -> AgentState:
             HumanMessage(
                 content=(
                     f"User query: {state['user_query']}\n"
-                    f"Reason previous attempt was insufficient: {state['validate_sql_response_reason']}"
+                    f"Previous SQL attempt: {state['generated_sql_query']}\n"
+                    f"Query execution result/error: {state['data_visual_response']}\n"
+                    f"Reason previous attempt was insufficient: {state['validate_sql_response_reason']}\n"
+                    f"Table schemas:\n{state['table_schemas']}"
                 )
             ),
         ]
@@ -217,8 +220,18 @@ def execute_query(state: AgentState) -> AgentState:
     }
 
 ### pass on the data somewhere else? 
-def respond(state: AgentState) -> AgentState: 
-    
+def respond(state: AgentState) -> AgentState:
+
+    result = state["data_visual_response"]
+
+    if isinstance(result, str) and result.startswith("Error:"):
+        return {
+            "final_answer": (
+                "I wasn't able to build a working query for that question after a few attempts. "
+                "Could you rephrase it or narrow it down (e.g. specific season, driver, or table)?"
+            )
+        }
+
     return {
-        "final_answer": state["data_visual_response"]
+        "final_answer": result
     }

@@ -3,7 +3,7 @@ load_dotenv()
 
 from core.database import get_connection
 
-from app.pipeline.ingest.ingest_tables_raw import (
+from app.pipeline.ingest.ingest_tables import (
     fetch_drivers,
     fetch_seasons,
     insert_seasons,
@@ -23,6 +23,10 @@ from app.pipeline.ingest.ingest_tables_raw import (
     fetch_all_standings,
     insert_constructor_championship,
     insert_driver_championship,
+    fetch_lap_data,
+    insert_laps,
+    fetch_pitstop_data,
+    insert_pitstop,
     )
 
 from app.pipeline.ingest.derive_tables import expand_sessions, ingest_sessions
@@ -51,41 +55,51 @@ def fetch_and_fill_schema():
         # ingest_rounds(conn, rounds)
         # print(f"Ingestd {len(rounds)} Rounds")
 
-        sessions = expand_sessions(rounds)   # no API call
-        ingest_sessions(conn, sessions)
-        print(f"Ingest {len(sessions)} Session")
+        # sessions = expand_sessions(rounds)   # no API call
+        # ingest_sessions(conn, sessions)
+        # print(f"Ingest {len(sessions)} Session")
 
-        team_drivers, round_entries, session_entries = fetch_race_results()
-        insert_team_drivers(conn, team_drivers)
-        print(f"Inserted {len(team_drivers)} Team Drivers")
+        # team_drivers, round_entries, session_entries = fetch_race_results()
+        # insert_team_drivers(conn, team_drivers)
+        # print(f"Inserted {len(team_drivers)} Team Drivers")
 
-        insert_round_entries(conn, round_entries)
-        print(f"Inserted {len(round_entries)} Round Entries")
+        # insert_round_entries(conn, round_entries)
+        # print(f"Inserted {len(round_entries)} Round Entries")
 
-        insert_session_entries(conn, session_entries)
-        print(f"Inserted {len(session_entries)} Session Entries")
+        # insert_session_entries(conn, session_entries)
+        # print(f"Inserted {len(session_entries)} Session Entries")
 
-        quali_team_drivers, quali_round_entries, quali_session_entries = fetch_quali_results()
-        insert_team_drivers(conn, quali_team_drivers)
-        insert_round_entries(conn, quali_round_entries)
-        insert_session_entries(conn, quali_session_entries)
-        print(f"Inserted {len(quali_session_entries)} Qualifying Session Entries")
+        # quali_team_drivers, quali_round_entries, quali_session_entries = fetch_quali_results()
+        # insert_team_drivers(conn, quali_team_drivers)
+        # insert_round_entries(conn, quali_round_entries)
+        # insert_session_entries(conn, quali_session_entries)
+        # print(f"Inserted {len(quali_session_entries)} Qualifying Session Entries")
 
-        sprint_team_drivers, sprint_round_entries, sprint_session_entries = fetch_sprint_results()
-        insert_team_drivers(conn, sprint_team_drivers)
-        insert_round_entries(conn, sprint_round_entries)
-        insert_session_entries(conn, sprint_session_entries)
-        print(f"Inserted {len(sprint_session_entries)} Sprint Session Entries")
+        # sprint_team_drivers, sprint_round_entries, sprint_session_entries = fetch_sprint_results()
+        # insert_team_drivers(conn, sprint_team_drivers)
+        # insert_round_entries(conn, sprint_round_entries)
+        # insert_session_entries(conn, sprint_session_entries)
+        # print(f"Inserted {len(sprint_session_entries)} Sprint Session Entries")
 
-        constructor_standings, driver_standings = fetch_all_standings()
-        insert_constructor_championship(conn, constructor_standings)
-        print(f"Inserted {len(constructor_standings)} Constructor Standings Entries")
-        insert_driver_championship(conn, driver_standings)
-        print(f"Inserted {len(driver_standings)} Driver Standings Entries")
+        # constructor_standings, driver_standings = fetch_all_standings()
+        # insert_constructor_championship(conn, constructor_standings)
+        # print(f"Inserted {len(constructor_standings)} Constructor Standings Entries")
+        # insert_driver_championship(conn, driver_standings)
+        # print(f"Inserted {len(driver_standings)} Driver Standings Entries")
+
+        # lap_entries = fetch_lap_data()
+        # insert_laps(conn, lap_entries)
+        # print(f"Inserted {len(lap_entries)} Lap Entries")
+
+        pitstop_entries = fetch_pitstop_data()
+        insert_pitstop(conn, pitstop_entries)
+        print(f"Inserted {len(pitstop_entries)} Pit Stop Entries")
 
         # circuit_meta = load_circuit_metadata()
         # updated = upsert_circuit_metadata(conn, circuit_meta)
         # print(f"Updated circuit metadata on {updated} circuits")
+
+        
 
 
 if __name__ == "__main__":

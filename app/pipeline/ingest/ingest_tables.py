@@ -15,6 +15,8 @@ from app.pipeline.ingest.models import (
     SeasonModel,
     RoundModel,
     RoundEntryModel,
+    PitStopModel,
+    LapModel,
     SessionModel,
 )
 
@@ -404,6 +406,100 @@ def fetch_sprint_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel]
 
     return team_drivers, round_entries, session_entries
 
+#only fetch the lap data for the 2025 seasaon
+def fetch_lap_data() -> list[LapModel]:
+    lap_entries = []
+
+    limit = 100
+    response = _get_with_retry(f"{BASE_URL}/2025/races.json")
+    total_round = int(response.json()["MRData"]["total"])
+
+    for curr_round in range(1, total_round + 1):
+        offset = 0
+        while True:
+            response = _get_with_retry(
+                f"{BASE_URL}/2025/{curr_round}/laps.json",
+                {"limit": limit, "offset": offset},
+            )
+            data = response.json()["MRData"]
+
+            races = data["RaceTable"]["Races"]
+            if not races:
+                break
+            laps = races[0]["Laps"]
+
+            for lap in laps:
+                lap_number = int(lap["number"]) if lap.get("number") else None
+
+                for driver_timing in lap["Timings"]:
+                    driver = driver_timing.get("driverId")
+                    raw_pos = driver_timing.get("position")
+                    driver_pos = int(raw_pos) if raw_pos else None
+                    lap_time = driver_timing.get("time") or None
+
+                    lap_entries.append(
+                        LapModel(
+                            session_api_id=f"2025_{curr_round}_Race",
+                            lap_number=lap_number,
+                            driver=driver,
+                            driver_pos=driver_pos,
+                            lap_time=lap_time,
+                        )
+                    )
+
+            offset += limit
+            if offset >= int(data["total"]):
+                break
+
+    return lap_entries
+
+#only fetch the pitstop data for the 2025 season (matches fetch_lap_data's scope,
+#since pit_stops.lap_id is a NOT NULL FK into bronze.laps)
+def fetch_pitstop_data() -> list[PitStopModel]:
+    pitstop_entries = []
+
+    limit = 100
+    response = _get_with_retry(f"{BASE_URL}/2025/races.json")
+    total_round = int(response.json()["MRData"]["total"])
+
+    for curr_round in range(1, total_round + 1):
+        session_api_id = f"2025_{curr_round}_Race"
+        offset = 0
+        while True:
+            response = _get_with_retry(
+                f"{BASE_URL}/2025/{curr_round}/pitstops.json",
+                {"limit": limit, "offset": offset},
+            )
+            data = response.json()["MRData"]
+
+            races = data["RaceTable"]["Races"]
+            if not races:
+                break
+            stops = races[0]["PitStops"]
+
+            for stop in stops:
+                driver = stop.get("driverId")
+                lap_number = stop.get("lap")
+                raw_stop = stop.get("stop")
+                pitstop_number = int(raw_stop) if raw_stop else None
+                duration = stop.get("duration") or None
+
+                pitstop_entries.append(
+                    PitStopModel(
+                        session_api_id=session_api_id,
+                        lap_api_id=f"{session_api_id}_{driver}_{lap_number}",
+                        driver=driver,
+                        pitstop_number=pitstop_number,
+                        duration=duration,
+                    )
+                )
+
+            offset += limit
+            if offset >= int(data["total"]):
+                break
+
+    return pitstop_entries
+
 
 def fetch_all_standings() -> tuple[list[TeamChampionshipModel], list[DriverChampionshipModel]]:
     """
@@ -706,3 +802,61 @@ def insert_driver_championship(conn, driver_standings: list[DriverChampionshipMo
         )
 
     conn.commit()
+
+def insert_laps(conn, lap_entries: list[LapModel]) -> None:
+
+    for le in lap_entries:
+        conn.execute(
+            """
+            INSERT INTO bronze.laps
+            (api_id, session_id, lap_number, driver, driver_position, lap_time, lap_time_sec)
+            VALUES (
+                %s,
+                (SELECT id FROM bronze.session WHERE api_id = %s),
+                %s, %s, %s, %s, %s
+            )
+            ON CONFLICT (api_id) DO NOTHING
+            """,
+            (
+                le.api_id,
+                le.session_api_id,
+                le.lap_number,
+                le.driver,
+                le.driver_pos,
+                le.lap_time,
+                le.lap_time_seconds,
+            ),
+        )
+
+    conn.commit()
+
+def insert_pitstop(conn, pitstops: list[PitStopModel]) -> None:
+
+    for ps in pitstops:
+        conn.execute(
+            """
+            INSERT INTO bronze.pit_stops
+            (api_id, session_id, lap_id, driver, pitstop_number, duration, duration_sec)
+            VALUES (
+                %s,
+                (SELECT id FROM bronze.session WHERE api_id = %s),
+                (SELECT id FROM bronze.laps WHERE api_id = %s),
+                %s, %s, %s, %s
+            )
+            ON CONFLICT (api_id) DO NOTHING
+            """,
+            (
+                ps.api_id,
+                ps.session_api_id,
+                ps.lap_api_id,
+                ps.driver,
+                ps.pitstop_number,
+                ps.duration,
+                ps.duration_seconds,
+            ),
+        )
+
+    conn.commit()
+
+    
+        

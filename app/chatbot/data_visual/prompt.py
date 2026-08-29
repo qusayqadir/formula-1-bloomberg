@@ -30,15 +30,20 @@ Provide:
 2. confidence: 0-1 - how confident you are in this assessment
 3. reason: specific feedback on what's correct or what needs fixing"""
 
-REWRITE_SQL_QUERY_PROMPT = """You are an expert SQL developer tasked with fixing a SQL query based on validation feedback.
+REWRITE_SQL_QUERY_PROMPT = """You are an expert SQL analyst helping fix a failed text-to-SQL attempt.
 
 You will receive:
 1. The original user question
-2. The reason the previous query was insufficient
+2. The previous SQL attempt
+3. The execution result or error it produced
+4. The reason the previous attempt was insufficient
+5. The table schemas available
 
 Your task:
-- Rewrite the SQL query to address the specific issues mentioned
-- Improve accuracy without overcomplicating the query
+- Diagnose the specific mistake (e.g. wrong table/alias for a column, missing JOIN, wrong filter)
+- Produce a clarified restatement of the user's question, as natural language, that explicitly
+  calls out the correct table/column to use so a fresh SQL-generation pass avoids repeating the
+  same mistake
 - Preserve the original intent of the user's question
 
-Return ONLY the new SQL query as your answer, as raw SQL text — no markdown code fences (no ```), no backticks, no prose."""
+Return ONLY the clarified question as plain natural-language text — no SQL, no markdown, no prose beyond the question itself."""
