@@ -51,7 +51,7 @@ def fetch_and_fill_schema():
         # ingest_constructor(conn, constructors)
         # print(f"Ingested {len(constructors)} constructors/teams")
 
-        rounds = fetch_rounds()
+        # rounds = fetch_rounds()
         # ingest_rounds(conn, rounds)
         # print(f"Ingestd {len(rounds)} Rounds")
 
@@ -87,9 +87,9 @@ def fetch_and_fill_schema():
         # insert_driver_championship(conn, driver_standings)
         # print(f"Inserted {len(driver_standings)} Driver Standings Entries")
 
-        # lap_entries = fetch_lap_data()
-        # insert_laps(conn, lap_entries)
-        # print(f"Inserted {len(lap_entries)} Lap Entries")
+        for year, lap_entries in fetch_lap_data():
+            insert_laps(conn, lap_entries)
+            print(f"Inserted {len(lap_entries)} Lap Entries for {year}")
 
         pitstop_entries = fetch_pitstop_data()
         insert_pitstop(conn, pitstop_entries)

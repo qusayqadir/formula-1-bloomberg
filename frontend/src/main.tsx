@@ -5,9 +5,8 @@ import "@fontsource-variable/jetbrains-mono";
 import "@/styles/index.css";
 import App from "@/App";
 
-// stamp before first paint so the stored theme never flashes
-document.documentElement.dataset.theme =
-  localStorage.getItem("f1-theme") === "light" ? "light" : "dark";
+// stamp before first paint so nothing ever flashes unstyled
+document.documentElement.dataset.theme = "dark";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

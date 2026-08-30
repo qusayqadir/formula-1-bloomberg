@@ -86,11 +86,20 @@ export function indexAtBand(px: number, length: number, plotWidth: number) {
 }
 
 /**
- * value → vertical pixel. The domain always includes zero, so charts with only
- * positive values keep a floor at the plot bottom, while diverging data (values
- * below zero) draws below a zero baseline that sits somewhere inside the plot.
+ * value → pixel along the value axis. The domain always includes zero, so
+ * charts with only positive values keep a floor at the baseline, while
+ * diverging data (values below zero) draws past a zero baseline that sits
+ * somewhere inside the plot. `invert` flips the range: true (vertical bars/
+ * areas) maps 0 → the plot's far edge and max → 0, so values grow upward;
+ * false (horizontal bars) maps 0 → 0 and max → the plot's far edge, so
+ * values grow rightward.
  */
-export function buildYScale(min: number, max: number, plotHeight: number) {
+export function buildValueScale(
+  min: number,
+  max: number,
+  extent: number,
+  invert: boolean
+) {
   const lo = Math.min(0, min)
   const hi = Math.max(0, max)
   // Guard a degenerate (zero-width) domain so `nice()` and the range map stay
@@ -98,7 +107,7 @@ export function buildYScale(min: number, max: number, plotHeight: number) {
   return scaleLinear()
     .domain([lo, hi === lo ? lo + 1 : hi])
     .nice()
-    .range([plotHeight, 0])
+    .range(invert ? [extent, 0] : [0, extent])
 }
 
 /** Index of the row nearest a horizontal pixel offset within the plot. */

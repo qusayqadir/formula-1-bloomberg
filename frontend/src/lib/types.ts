@@ -286,6 +286,42 @@ export interface HeadToHead {
   rows: HeadToHeadRow[];
 }
 
+/** GET /analytics/comparisons/teams */
+export interface TeamHeadToHeadRow {
+  session_id: number;
+  session_type: string | null;
+  year: number;
+  round_number: number | null;
+  round_name: string | null;
+  circuit_name: string | null;
+  a_position: number | null;
+  b_position: number | null;
+  a_grid: number | null;
+  b_grid: number | null;
+  a_points: number | null;
+  b_points: number | null;
+}
+
+export interface TeamHeadToHead {
+  metadata: Record<string, unknown>;
+  team_a: TeamRef;
+  team_b: TeamRef;
+  summary: {
+    shared_sessions: number;
+    position: { a: number; b: number };
+    grid: { a: number; b: number };
+    a_total_points: number;
+    b_total_points: number;
+    a_wins: number;
+    b_wins: number;
+    a_avg_finish: number | null;
+    b_avg_finish: number | null;
+    a_avg_grid: number | null;
+    b_avg_grid: number | null;
+  };
+  rows: TeamHeadToHeadRow[];
+}
+
 export interface QualifyingSegmentRow {
   driver: DriverRef;
   team: TeamRef;
@@ -298,4 +334,95 @@ export interface QualifyingSegmentRow {
 export interface QualifyingSegmentsResponse {
   metadata: Record<string, unknown>;
   rows: QualifyingSegmentRow[];
+}
+
+/** GET /analytics/pitstops/stops — one row per stop, one focused round;
+ *  duration_sec is the full pit-lane time (entry to exit). 2025-only
+ *  (bronze gap: pit-stop/lap ingest is not yet backfilled to prior seasons). */
+export interface PitStopRow {
+  round_id: number;
+  year: number;
+  round_number: number | null;
+  round_name: string | null;
+  driver: DriverRef;
+  team: TeamRef | null;
+  pitstop_number: number | null;
+  lap_number: number | null;
+  duration_sec: number | null;
+}
+
+/** GET /analytics/pitstops/laps — one row per driver per lap (running
+ *  position), one focused round. Substrate for lap-by-lap position charts
+ *  and stint-length derivation. */
+export interface LapPositionRow {
+  round_id: number;
+  year: number;
+  round_number: number | null;
+  round_name: string | null;
+  driver: DriverRef;
+  team: TeamRef | null;
+  lap_number: number;
+  position: number | null;
+  lap_time_sec: number | null;
+}
+
+/** GET /analytics/drivers/age-curve — one row per driver per age-year,
+ *  career-wide (2011–2025, independent of the season filter). */
+export interface DriverAgeRow {
+  driver: DriverRef;
+  age: number;
+  starts: number;
+  avg_points: number | null;
+  avg_finish: number | null;
+  total_points: number;
+}
+
+/** GET /analytics/track-type/index — driver/team points-per-start at each
+ *  track_type vs their own overall average. */
+export interface TrackTypeIndexRow {
+  driver: DriverRef | null;
+  team: TeamRef | null;
+  track_type: string;
+  starts: number;
+  avg_points: number;
+  avg_points_overall: number;
+  index: number;
+}
+
+/** GET /markets/polymarket — live F1 event odds from Polymarket's public
+ *  API (not backed by Postgres). An "event" (e.g. "F1 Drivers' Champion")
+ *  bundles several candidate markets, one Yes/No pair per outcome; each
+ *  carries its own price history so a single card can chart every
+ *  candidate as its own line, mirroring Polymarket's own event chart.
+ *  Prices are 0-100; `no_price` is always `100 - yes_price` since every
+ *  underlying market is binary Yes/No. */
+export interface PolymarketPricePoint {
+  t: number; // unix seconds
+  yes_price: number;
+}
+
+export interface PolymarketMarketSeries {
+  market_id: string;
+  outcome_label: string; // candidate name (e.g. "Lando Norris"), or "Yes" for a plain binary event
+  yes_price: number;
+  no_price: number;
+  volume: number;
+  liquidity: number;
+  price_history: PolymarketPricePoint[];
+}
+
+export interface PolymarketEvent {
+  event_id: string;
+  event_title: string;
+  event_volume: number;
+  event_liquidity: number;
+  expiry: string | null;
+  // "closed" when backfilled — there weren't enough live events to fill
+  // the page, so the most recently expired ones fill the remaining slots.
+  status: "active" | "closed";
+  markets: PolymarketMarketSeries[];
+}
+
+export interface PolymarketMarketsResponse {
+  events: PolymarketEvent[];
 }

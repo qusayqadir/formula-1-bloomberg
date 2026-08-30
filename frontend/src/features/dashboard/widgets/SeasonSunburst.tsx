@@ -22,7 +22,7 @@ export function SeasonSunburst(props: { className?: string }) {
   const { t, baseTooltip } = C;
   const query = useSeatMap(filters.year);
 
-  const option = useMemo<EChartsOption | null>(() => {
+  const built = useMemo(() => {
     const seats = (query.data?.rows ?? []).filter(
       (r) =>
         r.driver != null &&
@@ -65,6 +65,15 @@ export function SeasonSunburst(props: { className?: string }) {
           })),
       }));
 
+    return { data, seasonTotal };
+  }, [query.data, filters, t]);
+
+  // Fullscreen roughly triples the plot's linear size, so labels sized for
+  // the card would read as tiny print blown up — scale them to match.
+  const buildOption = (fullscreen: boolean): EChartsOption | null => {
+    if (!built) return null;
+    const { data, seasonTotal } = built;
+    const scale = fullscreen ? 2.2 : 1;
     return {
       animationDuration: 300,
       tooltip: {
@@ -92,7 +101,7 @@ export function SeasonSunburst(props: { className?: string }) {
               r: "56%",
               label: {
                 rotate: "tangential",
-                fontSize: 9,
+                fontSize: 9 * scale,
                 fontFamily: MONO,
                 color: t.heatLabel,
                 textBorderColor: t.heatLabelBorder,
@@ -105,7 +114,7 @@ export function SeasonSunburst(props: { className?: string }) {
               r: "88%",
               label: {
                 rotate: "radial",
-                fontSize: 8,
+                fontSize: 8 * scale,
                 fontFamily: MONO,
                 color: t.heatLabel,
                 textBorderColor: t.heatLabelBorder,
@@ -118,7 +127,7 @@ export function SeasonSunburst(props: { className?: string }) {
         },
       ],
     };
-  }, [query.data, filters, C]);
+  };
 
   return (
     <AnalyticsCard
@@ -129,13 +138,16 @@ export function SeasonSunburst(props: { className?: string }) {
       refreshing={query.isFetching && !query.isPending}
       error={query.error as Error | null}
       onRetry={() => query.refetch()}
-      empty={!query.isPending && !query.error && !option}
+      empty={!query.isPending && !query.error && !built}
       emptyText="No points scored in the current selection."
       expandable
       className={props.className}
       bodyClassName="p-2"
     >
-      {option && <EChart option={option} />}
+      {(fullscreen) => {
+        const option = buildOption(fullscreen);
+        return option && <EChart option={option} chartKey={fullscreen ? "full" : "card"} />;
+      }}
     </AnalyticsCard>
   );
 }

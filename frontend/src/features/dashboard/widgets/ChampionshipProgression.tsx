@@ -1,6 +1,8 @@
 /** One reusable championship-progression widget powers both the driver and
- *  constructor cards: same dataset, metric toggle (points / position / wins /
- *  gap-to-leader) re-shapes it locally with zero extra requests. */
+ *  constructor cards: same dataset, metric toggle (points / wins /
+ *  gap-to-leader) re-shapes it locally with zero extra requests. Position
+ *  (rank-over-time) is deliberately omitted — that's exactly the standalone
+ *  BumpChart widget below, so keeping it here would just duplicate it. */
 import { useMemo, useState } from "react";
 import type { EChartsOption, LineSeriesOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
@@ -14,7 +16,6 @@ import type { SeasonEntities } from "@/features/dashboard/entities";
 
 const METRIC_OPTIONS: { value: ChampMetric; label: string }[] = [
   { value: "points", label: "PTS" },
-  { value: "position", label: "POS" },
   { value: "wins", label: "WINS" },
   { value: "gap", label: "GAP" },
 ];

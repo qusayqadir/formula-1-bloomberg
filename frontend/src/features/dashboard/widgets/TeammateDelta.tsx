@@ -11,7 +11,7 @@ import { inRoundRange, statusBucket } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { driverCode } from "@/lib/format";
 
-const CONFIG = { gap: { label: "Avg finish gap", color: "purple" } } as const;
+const CONFIG = { gap: { label: "Avg finish gap", color: "pink" } } as const;
 
 interface PairRow {
   teamId: number;

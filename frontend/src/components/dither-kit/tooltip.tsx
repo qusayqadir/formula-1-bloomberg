@@ -1,6 +1,6 @@
 "use client"
 
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion, type Transition } from "motion/react"
 import { useState } from "react"
 import { useCommonChart } from "./common-context"
 import { cn } from "./lib"
@@ -15,6 +15,13 @@ const VARIANT: Record<TooltipVariant, string> = {
   "frosted-glass": "bg-raised/75 backdrop-blur-sm",
 }
 
+const DEFAULT_TRANSITION: Transition = {
+  type: "spring",
+  stiffness: 520,
+  damping: 38,
+  mass: 0.6,
+}
+
 /**
  * Floating hover tooltip. Reads the shared common context so it works in every
  * chart family. It glides between points and fades in/out (instead of snapping),
@@ -24,10 +31,13 @@ export function Tooltip({
   labelKey,
   valueFormatter,
   variant = "frosted-glass",
+  transition = DEFAULT_TRANSITION,
 }: {
   labelKey?: string
   valueFormatter?: (value: number, name: string) => string
   variant?: TooltipVariant
+  /** Override the glide/fade spring — e.g. a snappier feel for a dense widget. */
+  transition?: Transition
 }) {
   const chart = useCommonChart()
   const show = chart.ready && chart.hoverIndex != null
@@ -74,12 +84,7 @@ export function Tooltip({
             left,
           }}
           exit={{ opacity: 0 }}
-          transition={{
-            type: "spring",
-            stiffness: 520,
-            damping: 38,
-            mass: 0.6,
-          }}
+          transition={transition}
           className={cn(
             "pointer-events-none absolute z-10 rounded-md border px-2 py-1 shadow-sm",
             VARIANT[variant]

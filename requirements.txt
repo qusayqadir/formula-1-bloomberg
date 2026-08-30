@@ -1,5 +1,7 @@
 # Core / API
 fastapi>=0.115
+slowapi==0.1.10
+websockets>=17.0
 uvicorn[standard]>=0.30
 pydantic>=2.0
 pydantic-settings>=2.3
@@ -24,5 +26,9 @@ beautifulsoup4>=4.13   # regulation doc scraping/parsing
 # Config / utils
 python-dotenv>=1.0
 
+#aws
+boto3==1.43.83
+
 # Tests
 pytest>=8.0
+

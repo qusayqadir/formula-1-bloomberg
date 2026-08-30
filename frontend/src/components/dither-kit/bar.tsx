@@ -13,6 +13,11 @@ export type BarProps = {
   variant?: AreaVariant
   strokeVariant?: StrokeVariant
   isClickable?: boolean
+  /** Horizontal-orientation only: fade the dither across the bar's own
+   * height ("up"/"down") instead of along the value axis. Ignored by
+   * vertical bars. Defaults to "value" — every existing chart keeps its
+   * current look unless it opts in. */
+  fadeDirection?: "value" | "up" | "down"
   children?: ReactNode
 }
 
@@ -27,6 +32,7 @@ export function Bar({
   variant = "gradient",
   strokeVariant = "solid",
   isClickable = false,
+  fadeDirection = "value",
   children,
 }: BarProps) {
   const ctx = useChartPart("Bar", "bar")
@@ -39,9 +45,9 @@ export function Bar({
   }
 
   useEffect(() => {
-    registerSeries({ dataKey, kind: "bar", variant, strokeVariant })
+    registerSeries({ dataKey, kind: "bar", variant, strokeVariant, fadeDirection })
     return () => unregisterSeries(dataKey)
-  }, [dataKey, variant, strokeVariant, registerSeries, unregisterSeries])
+  }, [dataKey, variant, strokeVariant, fadeDirection, registerSeries, unregisterSeries])
 
   const band = ctx.bands[dataKey]
   if (!ctx.ready || !band) return null
@@ -60,15 +66,18 @@ export function Bar({
           const slot = ctx.barSlot(i, si, n)
           const top = ctx.y(b[1])
           const base = ctx.y(b[0])
+          const lo = Math.min(top, base)
+          const size = Math.abs(base - top)
+          const horizontal = ctx.orientation === "horizontal"
           return (
             // biome-ignore lint/a11y/noStaticElementInteractions: progressive enhancement; the Legend offers the same toggle accessibly
             <rect
               // biome-ignore lint/suspicious/noArrayIndexKey: index is the stable category position
               key={i}
-              x={slot.x}
-              y={Math.min(top, base)}
-              width={slot.width}
-              height={Math.abs(base - top)}
+              x={horizontal ? lo : slot.x}
+              y={horizontal ? slot.x : lo}
+              width={horizontal ? size : slot.width}
+              height={horizontal ? slot.width : size}
               fill="transparent"
               style={{ cursor: "pointer" }}
               onClick={onClick}

@@ -12,15 +12,20 @@ interface Option<V extends string | number> {
 /* Frosted-glass dropdown panel — same treatment as the chart tooltips
  * (translucent raised fill + backdrop blur + light ink border). */
 const GLASS_PANEL =
-  "absolute left-0 top-8 z-40 max-h-72 overflow-y-auto rounded-md border border-ink/20 bg-raised/75 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.1)] backdrop-blur-sm";
+  "absolute top-8 z-40 max-h-72 overflow-y-auto rounded-md border border-ink/20 bg-raised/75 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.1)] backdrop-blur-sm";
 
 /** Single-select dropdown with the glass panel (native <select> popups are
- *  OS-rendered and can't match the tooltip styling). */
+ *  OS-rendered and can't match the tooltip styling). `align="right"` opens
+ *  the panel from the button's right edge instead of its left — needed for
+ *  triggers that sit near the right edge of their container, where a
+ *  left-anchored panel would overflow the viewport and force a page-level
+ *  horizontal scrollbar. */
 export function GlassSelect<V extends string | number>(props: {
   label: string;
   value: V;
   options: Option<V>[];
   onChange: (v: V) => void;
+  align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -57,7 +62,7 @@ export function GlassSelect<V extends string | number>(props: {
         <ChevronDown size={11} className="text-mut" />
       </button>
       {open && (
-        <div role="listbox" className={`${GLASS_PANEL} w-48`}>
+        <div role="listbox" className={`${GLASS_PANEL} w-48 ${props.align === "right" ? "right-0" : "left-0"}`}>
           {props.options.map((o) => {
             const active = o.value === props.value;
             return (

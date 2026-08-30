@@ -87,19 +87,19 @@ export function CircuitMatrix(props: { entities: SeasonEntities; className?: str
       bodyClassName="overflow-auto"
     >
       {model && (
-        <table className="border-collapse font-mono text-[10px] tabular-nums">
+        <table className="border-collapse font-mono text-[11px] tabular-nums">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-20 bg-surface px-2 py-1.5 text-left text-[9px] font-semibold uppercase tracking-[0.12em] text-mut">
+              <th className="sticky left-0 top-0 z-20 min-w-[130px] bg-surface px-3 py-2.5 text-left text-[9.5px] font-semibold uppercase tracking-[0.12em] text-mut">
                 Driver
               </th>
               {model.circuits.map((c) => (
                 <th
                   key={c.id}
                   title={c.name}
-                  className="sticky top-0 z-10 max-w-24 truncate bg-surface px-1.5 py-1.5 text-left align-bottom text-[8.5px] font-semibold uppercase tracking-wider text-mut"
+                  className="sticky top-0 z-10 min-w-[92px] max-w-32 truncate bg-surface px-2 py-2.5 text-left align-bottom text-[9.5px] font-semibold uppercase tracking-wider text-mut"
                 >
-                  {c.name.replace(/(circuit|international|autodrome|autódromo|de |di )/gi, "").trim().slice(0, 14)}
+                  {c.name.replace(/(circuit|international|autodrome|autódromo|de |di )/gi, "").trim().slice(0, 16)}
                 </th>
               ))}
             </tr>
@@ -107,8 +107,8 @@ export function CircuitMatrix(props: { entities: SeasonEntities; className?: str
           <tbody>
             {model.driverOrder.map((d) => (
               <tr key={d.id} className="group">
-                <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-0.5 text-left font-medium text-sub group-hover:text-ink">
-                  <span aria-hidden className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: d.color }} />
+                <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-3 py-1 text-left text-[13px] font-semibold text-sub group-hover:text-ink">
+                  <span aria-hidden className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-middle" style={{ background: d.color }} />
                   {d.code}
                 </th>
                 {model.circuits.map((c) => {
@@ -118,11 +118,11 @@ export function CircuitMatrix(props: { entities: SeasonEntities; className?: str
                     <td
                       key={c.id}
                       title={row ? `${d.code} @ ${c.name}: ${model.spec.label} ${model.spec.format(v)} (${row.starts} starts)` : undefined}
-                      className="px-0.5 py-0.5"
+                      className="px-1 py-1"
                     >
                       {v != null ? (
                         <span
-                          className="block rounded-sm px-1 py-0.5 text-center text-ink"
+                          className="block rounded-sm px-1.5 py-1 text-center text-ink"
                           style={(() => {
                             const s = model.shade(v);
                             if (!s) return undefined;

@@ -91,7 +91,7 @@ export function SessionResultsTable(props: {
       className={props.className}
       bodyClassName="overflow-auto"
     >
-      <table className="w-full min-w-[560px] border-collapse font-mono text-[11px] tabular-nums">
+      <table className="w-full min-w-[620px] border-collapse font-mono text-[12px] tabular-nums">
         <thead className="sticky top-0 z-10 bg-surface">
           <tr className="border-b border-stroke text-left">
             {COLUMNS.map((c) => (
@@ -99,7 +99,7 @@ export function SessionResultsTable(props: {
                 key={c.label}
                 onClick={() => clickSort(c.key)}
                 aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}
-                className={`whitespace-nowrap px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-mut ${
+                className={`whitespace-nowrap px-3 py-2.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-mut ${
                   c.align === "right" ? "text-right" : ""
                 } ${c.key ? "cursor-pointer select-none hover:text-sub" : ""}`}
               >
@@ -122,28 +122,28 @@ export function SessionResultsTable(props: {
                 key={r.id}
                 onClick={() => toggleDriver(r.driver_id)}
                 title="Toggle driver filter"
-                className={`cursor-pointer border-b border-stroke/60 transition-colors last:border-0 hover:bg-ink/[0.04] ${
-                  selected ? "bg-accent/[0.06]" : ""
+                className={`cursor-pointer border-b border-stroke/60 transition-colors last:border-0 hover:bg-ink/[0.05] ${
+                  selected ? "bg-accent/[0.07]" : ""
                 }`}
               >
-                <td className="px-2 py-1">
+                <td className="px-3 py-2">
                   <span className={`font-semibold ${r.position === 1 ? "text-accent" : "text-ink"}`}>
                     {r.position ?? r.position_text ?? "—"}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-2 py-1">
-                  <span className="mr-1.5 inline-block h-2 w-2 rounded-[2px] align-middle" style={{ background: driver?.color ?? t.neutral }} aria-hidden />
-                  <span className="font-sans text-ink">{driver?.code ?? r.driver_abbreviation ?? r.driver_surname}</span>
+                <td className="whitespace-nowrap px-3 py-2">
+                  <span className="mr-2 inline-block h-2.5 w-2.5 rounded-[2px] align-middle" style={{ background: driver?.color ?? t.neutral }} aria-hidden />
+                  <span className="font-sans font-medium text-ink">{driver?.code ?? r.driver_abbreviation ?? r.driver_surname}</span>
                   <span className="ml-1.5 hidden font-sans text-sub xl:inline">{r.driver_surname}</span>
                 </td>
-                <td className="max-w-28 truncate whitespace-nowrap px-2 py-1 font-sans text-sub">{r.team_name}</td>
-                <td className="px-2 py-1 text-right text-sub">{r.grid && r.grid > 0 ? r.grid : "PL"}</td>
-                <td className={`px-2 py-1 text-right font-semibold ${delta == null ? "text-mut" : delta > 0 ? "text-pos" : delta < 0 ? "text-neg" : "text-mut"}`}>
+                <td className="max-w-28 truncate whitespace-nowrap px-3 py-2 font-sans text-sub">{r.team_name}</td>
+                <td className="px-3 py-2 text-right text-sub">{r.grid && r.grid > 0 ? r.grid : "PL"}</td>
+                <td className={`px-3 py-2 text-right font-semibold ${delta == null ? "text-mut" : delta > 0 ? "text-pos" : delta < 0 ? "text-neg" : "text-mut"}`}>
                   {delta == null ? "—" : delta > 0 ? `▲${delta}` : delta < 0 ? `▼${-delta}` : "="}
                 </td>
-                <td className="px-2 py-1 text-right text-ink">{formatPoints(r.points)}</td>
-                <td className="px-2 py-1 text-right text-sub">{r.laps_completed ?? "—"}</td>
-                <td className="px-2 py-1 text-right text-sub">
+                <td className="px-3 py-2 text-right text-ink">{formatPoints(r.points)}</td>
+                <td className="px-3 py-2 text-right text-sub">{r.laps_completed ?? "—"}</td>
+                <td className="px-3 py-2 text-right text-sub">
                   {(() => {
                     const lap = sanitizeLapSeconds(durationToSeconds(r.fastest_lap_time));
                     return (
@@ -164,7 +164,7 @@ export function SessionResultsTable(props: {
                     );
                   })()}
                 </td>
-                <td className="max-w-32 truncate whitespace-nowrap px-2 py-1 font-sans text-sub">
+                <td className="max-w-32 truncate whitespace-nowrap px-3 py-2 font-sans text-sub">
                   {r.status ?? (r.is_classified ? "Finished" : "—")}
                 </td>
               </tr>

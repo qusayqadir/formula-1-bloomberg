@@ -5,15 +5,13 @@ import { AppShell } from "@/components/shell/AppShell";
 import { FiltersProvider } from "@/state/filters";
 import { ThemeProvider } from "@/state/theme";
 import { HistoricalDashboard } from "@/features/dashboard/HistoricalDashboard";
+import { PredictionMarketsPage } from "@/features/prediction-markets/PredictionMarketsPage";
+import { RaceReplayPage } from "@/features/race-replay/RaceReplayPage";
 import { ChatPage } from "@/pages/Chat";
 
 // three.js is heavy — split the calendar out of the main bundle
 const CalendarPage = lazy(() =>
   import("@/features/calendar/CalendarPage").then((m) => ({ default: m.CalendarPage })),
-);
-// google maps JS is heavy — split the team profiles page out of the main bundle
-const TeamProfilesPage = lazy(() =>
-  import("@/features/team-profiles/TeamProfilesPage").then((m) => ({ default: m.TeamProfilesPage })),
 );
 import { ComingSoon } from "@/pages/ComingSoon";
 import { Creator } from "@/pages/Creator";
@@ -41,21 +39,14 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: "/", element: <HistoricalDashboard /> },
+      { path: "/prediction-markets", element: <PredictionMarketsPage /> },
       { path: "/news", element: stub("News", "Paddock headlines and race weekend coverage will land here.") },
+      { path: "/race-replay", element: <RaceReplayPage /> },
       {
         path: "/calendar",
         element: (
           <Suspense fallback={<div className="h-full" style={{ background: "#050608" }} />}>
             <CalendarPage />
-          </Suspense>
-        ),
-      },
-      { path: "/track-walk", element: stub("Track Walk", "Circuit deep-dives with corner-by-corner geography.") },
-      {
-        path: "/teams",
-        element: (
-          <Suspense fallback={<div className="h-full" style={{ background: "#050608" }} />}>
-            <TeamProfilesPage />
           </Suspense>
         ),
       },

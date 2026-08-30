@@ -262,6 +262,46 @@ class DriverHeadToHead(BaseModel):
     rows: list[HeadToHeadSessionRow]
 
 
+# ── team (constructor) head-to-head ─────────────────────────────────────────
+
+class TeamHeadToHeadRow(BaseModel):
+    """One shared round — a/b are each team's better-placed car that round."""
+    session_id: int
+    session_type: Optional[str] = None
+    year: int
+    round_number: Optional[int] = None
+    round_name: Optional[str] = None
+    circuit_name: Optional[str] = None
+    a_position: Optional[int] = None
+    b_position: Optional[int] = None
+    a_grid: Optional[int] = None
+    b_grid: Optional[int] = None
+    a_points: Optional[float] = None  # combined points, both cars
+    b_points: Optional[float] = None
+
+
+class TeamHeadToHeadSummary(BaseModel):
+    shared_sessions: int
+    position: HeadToHeadTally
+    grid: HeadToHeadTally
+    a_total_points: float
+    b_total_points: float
+    a_wins: int
+    b_wins: int
+    a_avg_finish: Optional[float] = None
+    b_avg_finish: Optional[float] = None
+    a_avg_grid: Optional[float] = None
+    b_avg_grid: Optional[float] = None
+
+
+class TeamHeadToHead(BaseModel):
+    metadata: dict[str, Any]
+    team_a: TeamRef
+    team_b: TeamRef
+    summary: TeamHeadToHeadSummary
+    rows: list[TeamHeadToHeadRow]
+
+
 # ── qualifying segments (Q1/Q2/Q3 times for a single round) ────────────────
 
 class QualifyingSegmentRow(BaseModel):
@@ -276,3 +316,82 @@ class QualifyingSegmentRow(BaseModel):
 class QualifyingSegmentsResponse(BaseModel):
     metadata: dict[str, Any]
     rows: list[QualifyingSegmentRow]
+
+
+# ── pit stops & laps (bronze.pit_stops / bronze.laps, 2025-only) ───────────
+
+class PitStopRow(BaseModel):
+    """One individual stop — duration_sec is the full pit-lane time
+    (entry to exit), as timed by the source API."""
+    round_id: int
+    year: int
+    round_number: Optional[int] = None
+    round_name: Optional[str] = None
+    driver: DriverRef
+    team: Optional[TeamRef] = None
+    pitstop_number: Optional[int] = None
+    lap_number: Optional[int] = None
+    duration_sec: Optional[float] = None
+
+
+class PitStopStopsResponse(BaseModel):
+    metadata: dict[str, Any]
+    rows: list[PitStopRow]
+
+
+class LapPositionRow(BaseModel):
+    """One driver's running position at the end of one lap."""
+    round_id: int
+    year: int
+    round_number: Optional[int] = None
+    round_name: Optional[str] = None
+    driver: DriverRef
+    team: Optional[TeamRef] = None
+    lap_number: int
+    position: Optional[int] = None
+    lap_time_sec: Optional[float] = None
+
+
+class LapPositionsResponse(BaseModel):
+    metadata: dict[str, Any]
+    rows: list[LapPositionRow]
+
+
+# ── driver age/experience curve (career-wide, needs bronze.drivers.dob) ────
+
+class DriverAgeRow(BaseModel):
+    """One driver's aggregate performance in one age-year of their career."""
+    driver: DriverRef
+    age: int
+    starts: int
+    avg_points: Optional[float] = None
+    avg_finish: Optional[float] = None
+    total_points: float
+
+
+class DriverAgeCurveResponse(BaseModel):
+    metadata: dict[str, Any]
+    rows: list[DriverAgeRow]
+
+
+# ── track-type performance index (driver/team over/under-index) ───────────
+
+class TrackTypeGroupBy(str, Enum):
+    DRIVER = "driver"
+    TEAM = "team"
+
+
+class TrackTypeIndexRow(BaseModel):
+    driver: Optional[DriverRef] = None
+    team: Optional[TeamRef] = None
+    track_type: str
+    starts: int
+    avg_points: float
+    avg_points_overall: float
+    index: float  # avg_points - avg_points_overall (positive = over-indexes here)
+
+
+class TrackTypeIndexResponse(BaseModel):
+    metadata: dict[str, Any]
+    rows: list[TrackTypeIndexRow]
+

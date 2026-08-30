@@ -6,8 +6,8 @@ import type { DitherColor, Seed } from "./palette"
 import { seedOfColor } from "./palette"
 import {
   buildBandScale,
+  buildValueScale,
   buildXScale,
-  buildYScale,
   computeBands,
   indexAtBand,
   nearestIndex,
@@ -17,6 +17,13 @@ import type { Dimensions } from "./use-chart-dimensions"
 
 /** Which chart root a part is composed under — drives the boundary guards. */
 export type ChartType = "area" | "bar" | "line" | "pie" | "radar"
+
+/** Bar-chart axis layout: "vertical" (default) grows bars upward with
+ * categories on x; "horizontal" grows bars rightward with categories on y
+ * (value ticks on x, category labels on y) — used for wide category lists
+ * or when the value reads more naturally left-to-right (e.g. laps). Only
+ * bar charts interpret this; area/line/pie/radar roots ignore it. */
+export type ChartOrientation = "vertical" | "horizontal"
 
 export type ChartConfig = Record<string, { label?: string; color: DitherColor }>
 
@@ -40,10 +47,17 @@ export type SeriesSpec = {
   kind: SeriesKind
   variant: AreaVariant
   strokeVariant: StrokeVariant
+  /** Bar-only, horizontal orientation: fade the dither across the bar's own
+   * screen height instead of along the value axis — "up"/"down" read like
+   * DitherGradient's directions (solid at one edge, dissolving toward the
+   * other). "value" (default) keeps the kit's usual fade-toward-the-value-
+   * line look — every other bar chart is unaffected unless it opts in. */
+  fadeDirection?: "value" | "up" | "down"
 }
 
 export type ChartContextValue = {
   chartType: ChartType // which root this part is under
+  orientation: ChartOrientation
   config: ChartConfig
   configKeys: string[] // series order — drives stacking + legend
   data: Row[]
@@ -182,6 +196,8 @@ export function useChartController({
   stackType,
   dimensions,
   margins,
+  orientation = "vertical",
+  barWidth = 1,
   animate = true,
   animationDuration = 900,
   replayToken = 0,
@@ -198,6 +214,10 @@ export function useChartController({
   stackType: StackType
   dimensions: Dimensions
   margins: Margins
+  orientation?: ChartOrientation
+  /** Bar-only: scales the drawn bar width, 0–1, without affecting category
+   * spacing — 1 (default) is the kit's normal width. */
+  barWidth?: number
   animate?: boolean
   animationDuration?: number
   replayToken?: number
@@ -239,7 +259,8 @@ export function useChartController({
       return cur &&
         cur.kind === spec.kind &&
         cur.variant === spec.variant &&
-        cur.strokeVariant === spec.strokeVariant
+        cur.strokeVariant === spec.strokeVariant &&
+        cur.fadeDirection === spec.fadeDirection
         ? prev
         : { ...prev, [spec.dataKey]: spec }
     })
@@ -300,16 +321,25 @@ export function useChartController({
   )
 
   const isBar = chartType === "bar"
+  const horizontal = orientation === "horizontal"
+  // "Category" extent is whichever screen axis carries the category band
+  // (x normally, y when horizontal); "value" extent is the other one. Every
+  // vertical-orientation consumer sees catExtent===plotWidth /
+  // valExtent===plotHeight exactly as before — orientation only changes
+  // anything when a bar chart opts into "horizontal".
+  const catExtent = horizontal ? plotHeight : plotWidth
+  const valExtent = horizontal ? plotWidth : plotHeight
+
   // The d3 scale factories are memoized so `y` keeps a stable identity: the
   // canvas `targets` memo (cartesian-canvas / bar-canvas) deps on ctx.y, and
   // xCenter/indexAtX/barSlot below close over these.
   const xPoint = useMemo(
-    () => buildXScale(data.length, plotWidth),
-    [data.length, plotWidth]
+    () => buildXScale(data.length, catExtent),
+    [data.length, catExtent]
   )
   const xBand = useMemo(
-    () => buildBandScale(data.length, plotWidth),
-    [data.length, plotWidth]
+    () => buildBandScale(data.length, catExtent),
+    [data.length, catExtent]
   )
   const bandwidth = isBar ? xBand.bandwidth() : 0
   const xCenter = useCallback(
@@ -320,29 +350,33 @@ export function useChartController({
   const indexAtX = useCallback(
     (px: number) =>
       isBar
-        ? indexAtBand(px, data.length, plotWidth)
-        : nearestIndex(px, data.length, plotWidth),
-    [isBar, data.length, plotWidth]
+        ? indexAtBand(px, data.length, catExtent)
+        : nearestIndex(px, data.length, catExtent),
+    [isBar, data.length, catExtent]
   )
   const stacked = stackType === "stacked" || stackType === "percent"
   const barSlot = useCallback(
     (i: number, si: number, n: number) => {
       const center = xCenter(i)
       if (stacked) {
-        const w = bandwidth * 0.9
+        const w = bandwidth * 0.9 * barWidth
         return { x: center - w / 2, width: w }
       }
       const slot = bandwidth / Math.max(n, 1)
+      const w = slot * 0.84 * barWidth
       return {
-        x: center - bandwidth / 2 + si * slot + slot * 0.08,
-        width: slot * 0.84,
+        x: center - bandwidth / 2 + si * slot + slot * 0.08 + (slot * 0.84 - w) / 2,
+        width: w,
       }
     },
-    [xCenter, stacked, bandwidth]
+    [xCenter, stacked, bandwidth, barWidth]
   )
+  // `invert`: vertical bars grow upward (0 at the plot's bottom edge), so the
+  // range is flipped; horizontal bars grow rightward (0 at the plot's left
+  // edge), so it isn't.
   const y = useMemo(
-    () => buildYScale(min, max, plotHeight),
-    [min, max, plotHeight]
+    () => buildValueScale(min, max, valExtent, !horizontal),
+    [min, max, valExtent, horizontal]
   )
 
   // Stable so `common` and the value stay stable; re-created only on config.
@@ -366,9 +400,12 @@ export function useChartController({
     tooltipLeft: Math.max(48, Math.min(plotWidth + mLeft - 48, cursorX)),
     // Follow the highest hovered node so the card rides the data path, but
     // keep enough headroom that the upward-lifted card never clips the top.
+    // Horizontal bars: `y(...)` maps along the value axis (now horizontal),
+    // not a row position, so ride the hovered category's band center instead.
     tooltipTop: (() => {
       const floor = mTop + 44
       if (hoverIndex == null) return floor
+      if (horizontal) return Math.max(floor, mTop + xCenter(hoverIndex))
       let minY = Number.POSITIVE_INFINITY
       for (const key of configKeys) {
         const b = bands[key]?.[hoverIndex]
@@ -410,6 +447,8 @@ export function useChartController({
     bands,
     y,
     data,
+    horizontal,
+    xCenter,
   ])
 
   // Memoized: this is the ChartContext value. A fresh object here would
@@ -420,6 +459,7 @@ export function useChartController({
   return useMemo<ChartContextValue>(
     () => ({
       chartType,
+      orientation,
       config,
       configKeys,
       data,
@@ -463,6 +503,7 @@ export function useChartController({
     }),
     [
       chartType,
+      orientation,
       config,
       configKeys,
       data,

@@ -7,6 +7,7 @@ import type { EChartsOption, LineSeriesOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
 import { MONO, useChartTheme } from "@/components/charts/theme";
+import { withAlpha } from "@/lib/colors";
 import { useQualifyingSegments, useSeasonRounds } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
 import { focusRound } from "@/features/dashboard/selectors";
@@ -61,8 +62,8 @@ export function QualifyingSegments(props: { entities: SeasonEntities; className?
         type: "line",
         connectNulls: false,
         symbol: "circle",
-        symbolSize: 6,
-        lineStyle: { width: 2, color: r.color, opacity: 0.85 },
+        symbolSize: 7,
+        lineStyle: { width: 2.25, color: r.color, opacity: 0.88 },
         itemStyle: { color: r.color, borderColor: t.surface, borderWidth: 1.5 },
         emphasis: { focus: "series", lineStyle: { width: 3, opacity: 1 } },
         blur: { lineStyle: { opacity: 0.08 }, itemStyle: { opacity: 0.08 }, label: { show: false } },
@@ -72,7 +73,13 @@ export function QualifyingSegments(props: { entities: SeasonEntities; className?
           color: t.labelBright,
           fontFamily: MONO,
           fontSize: 9,
-          distance: 6,
+          distance: 8,
+          // Every eliminated driver's label lands on the same x (their exit
+          // segment), so labels stack densely — a padded pill keeps each one
+          // legible against the gridlines and neighboring lines.
+          backgroundColor: withAlpha(t.surface, 0.85),
+          padding: [1, 4],
+          borderRadius: 3,
         },
         labelLayout: { moveOverlap: "shiftY" },
         tooltip: {
@@ -96,7 +103,7 @@ export function QualifyingSegments(props: { entities: SeasonEntities; className?
 
     return {
       animationDuration: 300,
-      grid: { left: 8, right: 66, top: 14, bottom: 6, containLabel: true },
+      grid: { left: 8, right: 84, top: 20, bottom: 10, containLabel: true },
       tooltip: { ...baseTooltip, trigger: "item" },
       xAxis: {
         type: "category",

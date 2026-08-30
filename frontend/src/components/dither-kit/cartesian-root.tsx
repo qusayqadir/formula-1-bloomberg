@@ -7,6 +7,7 @@ import {
 import {
   type ChartConfig,
   ChartContext,
+  type ChartOrientation,
   type ChartType,
   type Margins,
   useChartController,
@@ -34,6 +35,12 @@ export type CartesianChartProps<TData extends Row> = {
   config: ChartConfig
   children: ReactNode
   stackType?: StackType
+  /** Bar-only: "vertical" (default) or "horizontal" bar growth — see
+   * {@link ChartOrientation}. Ignored by area/line/pie/radar roots. */
+  orientation?: ChartOrientation
+  /** Bar-only: scales the drawn bar width, 0–1 (default 1 = the kit's
+   * normal width), category spacing unchanged. */
+  barWidth?: number
   margins?: Partial<Margins>
   className?: string
   animate?: boolean
@@ -79,6 +86,8 @@ export function CartesianRoot<TData extends Row>({
   config,
   children,
   stackType = "default",
+  orientation = "vertical",
+  barWidth = 1,
   margins: marginsProp,
   className,
   animate = true,
@@ -105,6 +114,8 @@ export function CartesianRoot<TData extends Row>({
     data: data as Record<string, unknown>[],
     config,
     stackType,
+    orientation,
+    barWidth,
     dimensions: size,
     margins,
     animate,
@@ -128,12 +139,17 @@ export function CartesianRoot<TData extends Row>({
     else svgChildren.push(child)
   })
 
-  const onMove = (clientX: number) => {
+  const onMove = (clientX: number, clientY: number) => {
     const el = ref.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    const px = clientX - rect.left - margins.left
-    const index = ctx.indexAtX(px)
+    // Horizontal bars: categories run down the y axis, so the hovered index
+    // tracks pointer Y instead of X.
+    const pos =
+      orientation === "horizontal"
+        ? clientY - rect.top - margins.top
+        : clientX - rect.left - margins.left
+    const index = ctx.indexAtX(pos)
     ctx.setHoverIndex(index)
     ctx.setCursorX(clientX - rect.left)
     onHoverChange?.(index)
@@ -146,7 +162,7 @@ export function CartesianRoot<TData extends Row>({
           ref={ref}
           className={cn("relative h-full w-full", className)}
           onPointerEnter={() => ctx.setMouseInChart(true)}
-          onPointerMove={interactive ? (e) => onMove(e.clientX) : undefined}
+          onPointerMove={interactive ? (e) => onMove(e.clientX, e.clientY) : undefined}
           onPointerLeave={() => {
             ctx.setMouseInChart(false)
             ctx.setHoverIndex(null)

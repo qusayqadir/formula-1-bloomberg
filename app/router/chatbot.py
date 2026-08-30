@@ -3,13 +3,19 @@ import re
 import uuid
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+# from slowapi import Limiter, _rate_limit_exceeded_handler
+# from slowapi.util import get_remote_address
+# from slowapi.errors import RateLimitExceeded
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.chatbot.graph import terminal_chat
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
+# limiter = Limiter(key_func=get_remote_address)
+# router.state.limiter = limiter
+# router.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Only these nodes actually set final_answer for this turn. Other nodes (e.g.
 # the router subgraph) share the full AgentState schema, so a stale
@@ -183,11 +189,11 @@ async def stream_chat(user_query: str, thread_id: str) -> AsyncIterator[str]:
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest) -> StreamingResponse:
+async def chat(request: Request, body: ChatRequest) -> StreamingResponse:
     """Stream a user question through the terminal chat graph as SSE."""
-    thread_id = request.thread_id or str(uuid.uuid4())
+    thread_id = body.thread_id or str(uuid.uuid4())
     return StreamingResponse(
-        stream_chat(request.user_query, thread_id),
+        stream_chat(body.user_query, thread_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

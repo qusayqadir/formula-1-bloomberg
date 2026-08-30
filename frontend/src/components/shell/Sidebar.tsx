@@ -4,22 +4,19 @@ import {
   Archive,
   Boxes,
   CalendarDays,
-  Footprints,
   LayoutDashboard,
   MessageSquare,
-  Moon,
   Newspaper,
   PanelLeftClose,
   Radio,
+  Rewind,
   Search,
   Sparkles,
-  Sun,
   TerminalSquare,
+  TrendingUp,
   UserRound,
-  Users,
   X,
 } from "lucide-react";
-import { useTheme } from "@/state/theme";
 import { FileTree, FileTreeFile, FileTreeFolder } from "@/components/ai-elements/file-tree";
 
 /** Strict-black rail. Navigation is a file-tree: folders group terminal /
@@ -101,7 +98,6 @@ export function Sidebar(props: {
   onClose: () => void;
   onCollapse: () => void;
 }) {
-  const { mode, toggle } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [promoDismissed, setPromoDismissed] = useState(
@@ -123,14 +119,6 @@ export function Sidebar(props: {
       <div className="flex h-12 flex-none items-center gap-2 rounded-xl border border-stroke bg-ink/[0.04] px-3">
         <p className="text-[14px] font-semibold tracking-tight text-ink">F1 Terminal</p>
         <span className="ml-auto" />
-        <button
-          onClick={toggle}
-          aria-label={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          title={mode === "dark" ? "Light mode" : "Dark mode"}
-          className="rounded-md p-1.5 text-mut transition-colors hover:bg-ink/[0.06] hover:text-ink"
-        >
-          {mode === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-        </button>
         <button
           onClick={props.onClose}
           aria-label="Close menu"
@@ -172,10 +160,14 @@ export function Sidebar(props: {
                 </span>
               }
             />
+            <FileTreeFile name="Race Replay" path="/race-replay" icon={Rewind} />
+            <FileTreeFile
+              name="Prediction Markets"
+              path="/prediction-markets"
+              icon={TrendingUp}
+            />
             <FileTreeFile name="News" path="/news" icon={Newspaper} />
-            <FileTreeFile name="Team Profiles" path="/teams" icon={Users} />
             <FileTreeFile name="Calendar" path="/calendar" icon={CalendarDays} />
-            <FileTreeFile name="Track Walk" path="/track-walk" icon={Footprints} />
           </FileTreeFolder>
           <FileTreeFolder name="chat" path="chat">
             <FileTreeFile name="Chat" path="/chat" icon={MessageSquare} />

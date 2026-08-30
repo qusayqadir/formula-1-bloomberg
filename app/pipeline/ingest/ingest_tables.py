@@ -113,9 +113,8 @@ def fetch_rounds() -> list[RoundModel]:
 
     while start_year < curr_year:
         TEMP_ROUND_URL = f"{BASE_URL}/{str(start_year)}/races.json"
-        
-        response = requests.get(TEMP_ROUND_URL)
-        response.raise_for_status()
+
+        response = _get_with_retry(TEMP_ROUND_URL)
         data = response.json()["MRData"]
         batch = data["RaceTable"]["Races"]
         rounds.extend([RoundModel(**r) for r in batch])
@@ -125,10 +124,19 @@ def fetch_rounds() -> list[RoundModel]:
     return rounds
 
 def _get_with_retry(url: str, params: Optional[dict] = None, retries: int = 3, backoff: float = 5.0):
-    """GET with exponential backoff on 429. Sleeps 0.5s between every request."""
+    """GET with exponential backoff on 429 and on connection-level failures
+    (the API sometimes resets the connection outright instead of returning
+    429 once a client's been rate-limited for a while). Sleeps 0.5s between
+    every request."""
     time.sleep(0.5)
     for attempt in range(retries):
-        response = requests.get(url, params=params)
+        try:
+            response = requests.get(url, params=params)
+        except requests.exceptions.RequestException as exc:
+            wait = backoff * (2 ** attempt)
+            print(f"{exc.__class__.__name__}. Waiting {wait}s before retry {attempt + 1}/{retries}...")
+            time.sleep(wait)
+            continue
         if response.status_code == 429:
             wait = backoff * (2 ** attempt)
             print(f"Rate limited. Waiting {wait}s before retry {attempt + 1}/{retries}...")
@@ -136,7 +144,9 @@ def _get_with_retry(url: str, params: Optional[dict] = None, retries: int = 3, b
             continue
         response.raise_for_status()
         return response
-    response.raise_for_status()  # raise after all retries exhausted
+    # last attempt: let a connection error propagate, or raise on a bad status
+    response = requests.get(url, params=params)
+    response.raise_for_status()
     return response
 
 
@@ -406,97 +416,108 @@ def fetch_sprint_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel]
 
     return team_drivers, round_entries, session_entries
 
-#only fetch the lap data for the 2025 seasaon
-def fetch_lap_data() -> list[LapModel]:
-    lap_entries = []
-
+def fetch_lap_data():
+    """Yields (year, list[LapModel]) one season at a time, sleeping 60s
+    between seasons — a full 2011-present backfill run back-to-back with no
+    pause is what sustains enough request volume to trigger the API's
+    rate-limiting/connection-reset cascade."""
     limit = 100
-    response = _get_with_retry(f"{BASE_URL}/2025/races.json")
-    total_round = int(response.json()["MRData"]["total"])
+    years = list(range(2011, datetime.now().year))
 
-    for curr_round in range(1, total_round + 1):
-        offset = 0
-        while True:
-            response = _get_with_retry(
-                f"{BASE_URL}/2025/{curr_round}/laps.json",
-                {"limit": limit, "offset": offset},
-            )
-            data = response.json()["MRData"]
+    for i, year in enumerate(years):
+        lap_entries = []
+        response = _get_with_retry(f"{BASE_URL}/{year}/races.json")
+        total_round = int(response.json()["MRData"]["total"])
 
-            races = data["RaceTable"]["Races"]
-            if not races:
-                break
-            laps = races[0]["Laps"]
+        for curr_round in range(1, total_round + 1):
+            session_api_id = f"{year}_{curr_round}_Race"
+            offset = 0
+            while True:
+                response = _get_with_retry(
+                    f"{BASE_URL}/{year}/{curr_round}/laps.json",
+                    {"limit": limit, "offset": offset},
+                )
+                data = response.json()["MRData"]
 
-            for lap in laps:
-                lap_number = int(lap["number"]) if lap.get("number") else None
+                races = data["RaceTable"]["Races"]
+                if not races:
+                    break
+                laps = races[0]["Laps"]
 
-                for driver_timing in lap["Timings"]:
-                    driver = driver_timing.get("driverId")
-                    raw_pos = driver_timing.get("position")
-                    driver_pos = int(raw_pos) if raw_pos else None
-                    lap_time = driver_timing.get("time") or None
+                for lap in laps:
+                    lap_number = int(lap["number"]) if lap.get("number") else None
 
-                    lap_entries.append(
-                        LapModel(
-                            session_api_id=f"2025_{curr_round}_Race",
-                            lap_number=lap_number,
+                    for driver_timing in lap["Timings"]:
+                        driver = driver_timing.get("driverId")
+                        raw_pos = driver_timing.get("position")
+                        driver_pos = int(raw_pos) if raw_pos else None
+                        lap_time = driver_timing.get("time") or None
+
+                        lap_entries.append(
+                            LapModel(
+                                session_api_id=session_api_id,
+                                lap_number=lap_number,
+                                driver=driver,
+                                driver_pos=driver_pos,
+                                lap_time=lap_time,
+                            )
+                        )
+
+                offset += limit
+                if offset >= int(data["total"]):
+                    break
+
+        yield year, lap_entries
+
+        if i < len(years) - 1:
+            print(f"Sleeping 60s before fetching {years[i + 1]}...")
+            time.sleep(60)
+
+#pit_stops.lap_id is a NOT NULL FK into bronze.laps, so this must cover the
+#same year range as fetch_lap_data (laps has to be ingested first)
+def fetch_pitstop_data() -> list[PitStopModel]:
+    pitstop_entries = []
+    limit = 100
+
+    for year in range(2011, datetime.now().year):
+        response = _get_with_retry(f"{BASE_URL}/{year}/races.json")
+        total_round = int(response.json()["MRData"]["total"])
+
+        for curr_round in range(1, total_round + 1):
+            session_api_id = f"{year}_{curr_round}_Race"
+            offset = 0
+            while True:
+                response = _get_with_retry(
+                    f"{BASE_URL}/{year}/{curr_round}/pitstops.json",
+                    {"limit": limit, "offset": offset},
+                )
+                data = response.json()["MRData"]
+
+                races = data["RaceTable"]["Races"]
+                if not races:
+                    break
+                stops = races[0]["PitStops"]
+
+                for stop in stops:
+                    driver = stop.get("driverId")
+                    lap_number = stop.get("lap")
+                    raw_stop = stop.get("stop")
+                    pitstop_number = int(raw_stop) if raw_stop else None
+                    duration = stop.get("duration") or None
+
+                    pitstop_entries.append(
+                        PitStopModel(
+                            session_api_id=session_api_id,
+                            lap_api_id=f"{session_api_id}_{driver}_{lap_number}",
                             driver=driver,
-                            driver_pos=driver_pos,
-                            lap_time=lap_time,
+                            pitstop_number=pitstop_number,
+                            duration=duration,
                         )
                     )
 
-            offset += limit
-            if offset >= int(data["total"]):
-                break
-
-    return lap_entries
-
-#only fetch the pitstop data for the 2025 season (matches fetch_lap_data's scope,
-#since pit_stops.lap_id is a NOT NULL FK into bronze.laps)
-def fetch_pitstop_data() -> list[PitStopModel]:
-    pitstop_entries = []
-
-    limit = 100
-    response = _get_with_retry(f"{BASE_URL}/2025/races.json")
-    total_round = int(response.json()["MRData"]["total"])
-
-    for curr_round in range(1, total_round + 1):
-        session_api_id = f"2025_{curr_round}_Race"
-        offset = 0
-        while True:
-            response = _get_with_retry(
-                f"{BASE_URL}/2025/{curr_round}/pitstops.json",
-                {"limit": limit, "offset": offset},
-            )
-            data = response.json()["MRData"]
-
-            races = data["RaceTable"]["Races"]
-            if not races:
-                break
-            stops = races[0]["PitStops"]
-
-            for stop in stops:
-                driver = stop.get("driverId")
-                lap_number = stop.get("lap")
-                raw_stop = stop.get("stop")
-                pitstop_number = int(raw_stop) if raw_stop else None
-                duration = stop.get("duration") or None
-
-                pitstop_entries.append(
-                    PitStopModel(
-                        session_api_id=session_api_id,
-                        lap_api_id=f"{session_api_id}_{driver}_{lap_number}",
-                        driver=driver,
-                        pitstop_number=pitstop_number,
-                        duration=duration,
-                    )
-                )
-
-            offset += limit
-            if offset >= int(data["total"]):
-                break
+                offset += limit
+                if offset >= int(data["total"]):
+                    break
 
     return pitstop_entries
 

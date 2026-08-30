@@ -13,13 +13,17 @@
   - [ ] head to head quali results widget 
   - [ ] ~~Ingest sprint qualifying results ( no data )~~ 
   - [x] Ingest sprint results
-  - [ ] ++ingest pitstop data++
-  - [ ] ++ingest lap data++ 
-    - [ ] ++race recap just for 2025 season++ 
+  - [x] ++ingest pitstop data++
+  - [x] ++ingest lap data++ 
+    - [x] ++race recap just for 2025 season++ 
+    - [ ] fix issue to assume driver is retired when in reality they have been lapped and didnt finsih all laps of race
+    - [ ] 
+  - [ ] add way more laps. 
   - [ ] ingest race control data - openf1 
   - [ ] ingest driver cost data ( for each crash how much they were liable for? )  find api for this data 
-  - [ ] driver career stats? WC, Wins, Poles? 
+  - [ ] driver career stats? WC, Wins, Poles? in team profiles 
   - [ ] fix design for historical data to enable automatoin 
+    - [ ] eventbridge? have an agent manually right all the triggers for the 
   - [ ] incremental poller, checkpointing, logging, reconciliation if upstream data corrects itself later
 
 Work on team profiles
@@ -27,12 +31,13 @@ Work on team profiles
 - [ ] **live dashboard** 
   - [ ] respond to openf1 to gain access and confirm api access keys
   - [ ] config kineses, and lamda pollers and publisher 
-- [ ] **nice to have features** 
-  - [ ] kalshi and polymarket and fanduel betting odds ( live or historical or both ? ) 
+  - [ ] use all the lap data, pitstop data, and then find a way to get the race stint data and which tire compond the driver is running on, and then using aws sagemaker and kendra (for timeseries data) build a custom live predicition machine learning model that given a driver would predict the best possible pitstop lap for undercut/overcut strategy and provide insight  
+- [x] **nice to have features** 
+  - [x] kalshi and polymarket and fanduel betting odds ( live or historical or both ? ) 
 
 - [ ] **cloud config**
   - [ ] ++s3 static files++
-    - [ ] ++team profile images + metadata?++ 
+    - [ ] ++~~team profile images + metadata?++~~ 
     - [ ] ++track/circuit images++ 
   - [x] Move regulation docs onto AWS-managed Mongodb
   - [ ] config elastic ip for ec2 instance and add it to accepted network ips for atlas

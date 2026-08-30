@@ -1,11 +1,10 @@
-/** Shared ECharts chrome, theme-aware. Widgets call useChartTheme() and
- *  build options from the returned bundle; the bundle is a per-mode cached
- *  singleton, so putting it in a useMemo dependency list re-renders the
- *  chart exactly once per theme flip. Marks stay thin (2px lines, capped
- *  bars); grid/axes stay recessive in both modes. */
+/** Shared ECharts chrome, dark-only. Widgets call useChartTheme() and build
+ *  options from the returned bundle; it's a module-level singleton, so
+ *  putting it in a useMemo dependency list is just a stable identity check.
+ *  Marks stay thin (2px lines, capped bars); grid/axes stay recessive. */
 import type { LegendComponentOption, TooltipComponentOption } from "echarts";
-import { CHART_DARK, CHART_LIGHT, withAlpha, type ChartTokens } from "@/lib/colors";
-import { useTheme, type ThemeMode } from "@/state/theme";
+import { CHART_DARK, withAlpha, type ChartTokens } from "@/lib/colors";
+import type { ThemeMode } from "@/state/theme";
 
 export const MONO = '"JetBrains Mono Variable", ui-monospace, monospace';
 export const SANS = '"SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", system-ui, sans-serif';
@@ -63,6 +62,10 @@ function build(mode: ThemeMode, t: ChartTokens): ChartChrome {
       borderWidth: 1,
       padding: [4, 8] as number[],
       confine: true,
+      // ECharts defaults to a 0.4s CSS transition on the tooltip's position —
+      // fine for a slow-moving cursor, but it reads as laggy/choppy tracking
+      // when scrubbing quickly across points. Snap instantly instead.
+      transitionDuration: 0,
       textStyle: { color: t.ink, fontSize: 11, fontFamily: MONO },
       extraCssText:
         "box-shadow: 0 1px 2px rgba(0,0,0,0.1); border-radius: 6px; font-variant-numeric: tabular-nums; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); line-height: 1.45;",
@@ -104,12 +107,8 @@ function build(mode: ThemeMode, t: ChartTokens): ChartChrome {
   };
 }
 
-const BUNDLES: Record<ThemeMode, ChartChrome> = {
-  dark: build("dark", CHART_DARK),
-  light: build("light", CHART_LIGHT),
-};
+const DARK_BUNDLE = build("dark", CHART_DARK);
 
 export function useChartTheme(): ChartChrome {
-  const { mode } = useTheme();
-  return BUNDLES[mode];
+  return DARK_BUNDLE;
 }

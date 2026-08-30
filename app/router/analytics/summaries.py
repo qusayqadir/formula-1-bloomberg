@@ -9,10 +9,15 @@ Datasets:
 - /analytics/teams/summary     → team aggregates (+ per-driver contribution)
 - /analytics/circuits/performance → circuit aggregates incl. geo/altitude fields
 - /analytics/results/status-distribution → status/reliability counts
+- /analytics/drivers/age-curve → performance aggregated by age-at-race (career-wide)
+- /analytics/track-type/index → driver/team points-per-start at each track_type
+  vs their own overall average (over/under-index)
 
 Unless a session_type or session_id filter is given, aggregates default to
 Race sessions so averages are not polluted by practice/qualifying rows.
 """
+from typing import Optional
+
 import psycopg
 from fastapi import APIRouter, Depends, Query
 
@@ -22,6 +27,7 @@ from app.router.analytics.schemas import (
     CircuitGroupBy,
     CircuitRacecraftResponse,
     CircuitSummaryResponse,
+    DriverAgeCurveResponse,
     DriverGroupBy,
     GridFinishDensityResponse,
     StatusDistributionResponse,
@@ -29,6 +35,8 @@ from app.router.analytics.schemas import (
     SummaryResponse,
     TeamGroupBy,
     TeamSummaryResponse,
+    TrackTypeGroupBy,
+    TrackTypeIndexResponse,
 )
 
 router = APIRouter(tags=["analytics"])
@@ -323,3 +331,127 @@ def status_distribution(
             for r in rows
         ],
     }
+
+
+# ── driver age/experience curve ─────────────────────────────────────────────
+
+@router.get("/drivers/age-curve", response_model=DriverAgeCurveResponse)
+def driver_age_curve(
+    driver_id: Optional[int] = Query(None),
+    driver_ids: Optional[list[int]] = Query(None),
+    db: psycopg.Connection = Depends(get_db),
+):
+    """Career-wide performance by age-at-race — how a driver's points/finish
+    trend as they age. Independent of the season filter (spans 2011–2025)."""
+    where = ["sess.type = 'Race'", "d.date_of_birth IS NOT NULL", "r.date IS NOT NULL"]
+    params: dict = {}
+    if driver_id is not None:
+        where.append("d.id = %(driver_id)s")
+        params["driver_id"] = driver_id
+    if driver_ids:
+        where.append("d.id = ANY(%(driver_ids)s)")
+        params["driver_ids"] = driver_ids
+    sql = f"""
+        SELECT {DRIVER_COLS},
+               floor(extract(year from age(r.date, d.date_of_birth)))::int AS age,
+               count(*) AS starts,
+               avg(se.points) AS avg_points,
+               sum(se.points) AS total_points,
+               avg(se.position) FILTER (WHERE se.position IS NOT NULL) AS avg_finish
+        {RESULT_JOIN}
+        WHERE {' AND '.join(where)}
+        GROUP BY d.id, d.forename, d.surname, d.abbreviation, age
+        ORDER BY d.id, age
+    """
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    return {
+        "metadata": {"driver_id": driver_id, "driver_ids": driver_ids},
+        "rows": [
+            {"driver": _driver_ref(r), "age": r["age"], "starts": r["starts"],
+             "avg_points": r["avg_points"], "avg_finish": r["avg_finish"],
+             "total_points": r["total_points"] or 0}
+            for r in rows
+        ],
+    }
+
+
+# ── track-type performance index (driver/team over/under-index) ───────────
+
+TRACK_TYPE_ENTITY = {
+    TrackTypeGroupBy.DRIVER: {
+        "cols": DRIVER_COLS,
+        "group": "d.id, d.forename, d.surname, d.abbreviation",
+        "names": ["driver_id", "forename", "surname", "abbreviation"],
+    },
+    TrackTypeGroupBy.TEAM: {
+        "cols": TEAM_COLS,
+        "group": "t.id, t.name, t.primary_color",
+        "names": ["team_id", "team_name", "primary_color"],
+    },
+}
+
+
+@router.get("/track-type/index", response_model=TrackTypeIndexResponse)
+def track_type_index(
+    group_by: TrackTypeGroupBy = Query(TrackTypeGroupBy.DRIVER),
+    year_from: Optional[int] = Query(None),
+    year_to: Optional[int] = Query(None),
+    min_starts: int = Query(3, ge=1, description="Minimum starts at a track_type to include the cell"),
+    db: psycopg.Connection = Depends(get_db),
+):
+    """Points-per-start at each track_type vs the entity's own overall
+    average — positive index = over-indexes on that archetype."""
+    entity = TRACK_TYPE_ENTITY[group_by]
+    names_csv = ", ".join(entity["names"])
+    id_col = entity["names"][0]
+    where = [
+        "sess.type = 'Race'",
+        "c.track_type IS NOT NULL",
+    ]
+    params: dict = {}
+    if year_from is not None:
+        where.append("s.year >= %(year_from)s")
+        params["year_from"] = year_from
+    if year_to is not None:
+        where.append("s.year <= %(year_to)s")
+        params["year_to"] = year_to
+    sql = f"""
+        WITH per_type AS (
+            SELECT {entity["cols"]}, c.track_type,
+                   count(*) AS starts, avg(se.points) AS avg_points
+            {RESULT_JOIN}
+            WHERE {' AND '.join(where)}
+            GROUP BY {entity["group"]}, c.track_type
+        ),
+        overall AS (
+            SELECT {id_col},
+                   sum(avg_points * starts) / nullif(sum(starts), 0) AS avg_points_overall,
+                   sum(starts) AS total_starts
+            FROM per_type
+            GROUP BY {id_col}
+        )
+        SELECT pt.*, o.avg_points_overall, o.total_starts
+        FROM per_type pt
+        JOIN overall o USING ({id_col})
+        WHERE pt.starts >= %(min_starts)s
+        ORDER BY {id_col}, pt.track_type
+    """
+    params["min_starts"] = min_starts
+    with db.cursor() as cur:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    ref = _driver_ref if group_by is TrackTypeGroupBy.DRIVER else _team_ref
+    key = "driver" if group_by is TrackTypeGroupBy.DRIVER else "team"
+    return {
+        "metadata": {"group_by": group_by.value, "year_from": year_from, "year_to": year_to,
+                     "min_starts": min_starts},
+        "rows": [
+            {key: ref(r), "track_type": r["track_type"], "starts": r["starts"],
+             "avg_points": r["avg_points"], "avg_points_overall": r["avg_points_overall"],
+             "index": r["avg_points"] - r["avg_points_overall"]}
+            for r in rows
+        ],
+    }
+

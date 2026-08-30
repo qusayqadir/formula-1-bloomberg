@@ -5,6 +5,7 @@ from app.router import (
     championships,
     circuits,
     drivers,
+    markets,
     meta,
     results,
     rounds,
@@ -25,4 +26,5 @@ api_router.include_router(circuits.router)
 api_router.include_router(championships.router)
 api_router.include_router(meta.router)
 api_router.include_router(analytics.router)
+api_router.include_router(markets.router)
 api_router.include_router(chatbot.router)

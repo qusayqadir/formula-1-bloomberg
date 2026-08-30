@@ -11,6 +11,7 @@ import { GridFinishSlope } from "@/features/dashboard/widgets/GridFinishSlope";
 import { FastestLapGap } from "@/features/dashboard/widgets/FastestLapGap";
 import { ResultsHeatmap } from "@/features/dashboard/widgets/ResultsHeatmap";
 import { HeadToHead } from "@/features/dashboard/widgets/HeadToHead";
+import { TeamHeadToHead } from "@/features/dashboard/widgets/TeamHeadToHead";
 import { ConsistencyBox } from "@/features/dashboard/widgets/ConsistencyBox";
 import { ReliabilityMatrix } from "@/features/dashboard/widgets/ReliabilityMatrix";
 import { TeammateDelta } from "@/features/dashboard/widgets/TeammateDelta";
@@ -22,6 +23,11 @@ import { GridFinishHexbin } from "@/features/dashboard/widgets/GridFinishHexbin"
 import { CircuitMatrix } from "@/features/dashboard/widgets/CircuitMatrix";
 import { QualifyingSegments } from "@/features/dashboard/widgets/QualifyingSegments";
 import { QualifyingSegmentsTable } from "@/features/dashboard/widgets/QualifyingSegmentsTable";
+import { PositionsAroundPits } from "@/features/dashboard/widgets/PositionsAroundPits";
+import { RaceReplayPromo } from "@/features/dashboard/widgets/RaceReplayPromo";
+import { TireStints } from "@/features/dashboard/widgets/TireStints";
+import { DriverAgeCurve } from "@/features/dashboard/widgets/DriverAgeCurve";
+import { TrackTypePerformanceMatrix } from "@/features/dashboard/widgets/TrackTypePerformanceMatrix";
 
 export function HistoricalDashboard() {
   const { filters } = useFilters();
@@ -70,25 +76,31 @@ export function HistoricalDashboard() {
 
         <BumpChart entities={entities} className="h-[440px] md:col-span-2 xl:col-span-12" />
 
-        <PointsShareArea className="h-[380px] md:col-span-2 xl:col-span-7" />
-        <SeasonSunburst className="h-[380px] md:col-span-1 xl:col-span-5" />
+        <PointsShareArea className="h-[500px] md:col-span-2 xl:col-span-7" />
+        <SeasonSunburst className="h-[500px] md:col-span-1 xl:col-span-5" />
 
-        <SessionResultsTable entities={entities} className="h-[400px] md:col-span-2 xl:col-span-5" />
-        <GridFinishSlope entities={entities} className="h-[400px] md:col-span-1 xl:col-span-4" />
-        <FastestLapGap entities={entities} className="h-[400px] md:col-span-1 xl:col-span-3" />
+        <SessionResultsTable entities={entities} className="h-[720px] md:col-span-2 xl:col-span-5" />
+        <GridFinishSlope entities={entities} className="h-[720px] md:col-span-1 xl:col-span-4" />
+        <FastestLapGap entities={entities} className="h-[720px] md:col-span-1 xl:col-span-3" />
+
+        {/* pit stops — focused-round strategy views, 2025-only ingest */}
+        <PositionsAroundPits entities={entities} className="h-[620px] md:col-span-2 xl:col-span-8" />
+        <RaceReplayPromo className="h-[620px] md:col-span-2 xl:col-span-4" />
+        <TireStints entities={entities} className="h-[720px] md:col-span-2 xl:col-span-12" />
 
         {/* qualifying — Q1/Q2/Q3 segment times are stored as three synthetic
             sessions sharing the overall final position (no per-segment position) */}
-        <QualifyingSegments entities={entities} className="h-[460px] md:col-span-2 xl:col-span-7" />
-        <QualifyingSegmentsTable entities={entities} className="h-[460px] md:col-span-2 xl:col-span-5" />
+        <QualifyingSegments entities={entities} className="h-[720px] md:col-span-2 xl:col-span-7" />
+        <QualifyingSegmentsTable entities={entities} className="h-[720px] md:col-span-2 xl:col-span-5" />
 
         {/* sprint — results + grid→finish + gap to fastest */}
-        <SessionResultsTable entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-2 xl:col-span-5" />
-        <GridFinishSlope entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-1 xl:col-span-4" />
-        <FastestLapGap entities={entities} sessionType="Sprint" className="h-[400px] md:col-span-1 xl:col-span-3" />
+        <SessionResultsTable entities={entities} sessionType="Sprint" className="h-[720px] md:col-span-2 xl:col-span-5" />
+        <GridFinishSlope entities={entities} sessionType="Sprint" className="h-[720px] md:col-span-1 xl:col-span-4" />
+        <FastestLapGap entities={entities} sessionType="Sprint" className="h-[720px] md:col-span-1 xl:col-span-3" />
 
-        <ResultsHeatmap entities={entities} className="h-[460px] md:col-span-2 xl:col-span-8" />
-        <HeadToHead entities={entities} className="h-[460px] md:col-span-2 xl:col-span-4" />
+        <ResultsHeatmap entities={entities} className="h-[820px] md:col-span-2 xl:col-span-12" />
+        <HeadToHead entities={entities} className="h-[420px] md:col-span-2 xl:col-span-6" />
+        <TeamHeadToHead entities={entities} className="h-[420px] md:col-span-2 xl:col-span-6" />
 
         <HorizonDeltas entities={entities} className="h-[560px] md:col-span-2 xl:col-span-7" />
         <GridFinishHexbin className="h-[560px] md:col-span-2 xl:col-span-5" />
@@ -99,12 +111,16 @@ export function HistoricalDashboard() {
         <TeammateDelta entities={entities} className="h-[380px] md:col-span-2 xl:col-span-7" />
         <CircuitRacecraft className="h-[380px] md:col-span-2 xl:col-span-5" />
 
-        <CircuitMatrix entities={entities} className="h-[420px] md:col-span-2 xl:col-span-12" />
+        <CircuitMatrix entities={entities} className="h-[620px] md:col-span-2 xl:col-span-12" />
+
+        {/* career / archetype views — 2011–2025, independent of the season filter */}
+        <DriverAgeCurve entities={entities} className="h-[460px] md:col-span-2 xl:col-span-6" />
+        <TrackTypePerformanceMatrix className="h-[460px] md:col-span-2 xl:col-span-6" />
       </div>
 
       <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-mut">
         Historical data 2011–2025 · race classifications, championship snapshots, circuits ·
-        no lap-by-lap timing, telemetry, tyre or weather data in source schema
+        pit-stop and lap data available for 2025 only · no telemetry, tyre or weather data in source schema
       </p>
     </div>
   );

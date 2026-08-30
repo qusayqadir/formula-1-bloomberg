@@ -17,7 +17,11 @@ interface Props {
   expandable?: boolean;
   className?: string;
   bodyClassName?: string;
-  children: ReactNode;
+  /** Plain node, or a render function that receives whether the card is
+   *  currently showing in the fullscreen expanded view — for widgets that
+   *  need to scale up text/marks so they still read well at that size
+   *  (e.g. a chart's label fontSize). */
+  children: ReactNode | ((fullscreen: boolean) => ReactNode);
 }
 
 /** Shared shell for every analytical widget: eyebrow + title header, local
@@ -36,32 +40,35 @@ export function AnalyticsCard(props: Props) {
     };
   }, [expanded]);
 
-  const body = props.loading ? (
-    <div className="flex h-full min-h-24 flex-col gap-2 p-3">
-      <div className="skeleton h-3 w-1/3 rounded" />
-      <div className="skeleton min-h-16 flex-1 rounded" />
-    </div>
-  ) : props.error ? (
-    <div className="flex h-full min-h-24 flex-col items-center justify-center gap-2 p-4 text-center">
-      <p className="text-xs text-sub">Couldn’t load this dataset — {props.error.message}</p>
-      {props.onRetry && (
-        <button
-          onClick={props.onRetry}
-          className="flex items-center gap-1.5 rounded-md border border-stroke bg-raised px-2.5 py-1 text-xs text-ink transition-colors hover:border-stroke-strong"
-        >
-          <RotateCcw size={11} /> Retry
-        </button>
-      )}
-    </div>
-  ) : props.empty ? (
-    <div className="flex h-full min-h-24 items-center justify-center p-4">
-      <p className="max-w-64 text-center text-xs leading-relaxed text-mut">
-        {props.emptyText ?? "No data for the current filters. Widen the selection to see results."}
-      </p>
-    </div>
-  ) : (
-    props.children
-  );
+  const body = (fullscreen: boolean) =>
+    props.loading ? (
+      <div className="flex h-full min-h-24 flex-col gap-2 p-3">
+        <div className="skeleton h-3 w-1/3 rounded" />
+        <div className="skeleton min-h-16 flex-1 rounded" />
+      </div>
+    ) : props.error ? (
+      <div className="flex h-full min-h-24 flex-col items-center justify-center gap-2 p-4 text-center">
+        <p className="text-xs text-sub">Couldn’t load this dataset — {props.error.message}</p>
+        {props.onRetry && (
+          <button
+            onClick={props.onRetry}
+            className="flex items-center gap-1.5 rounded-md border border-stroke bg-raised px-2.5 py-1 text-xs text-ink transition-colors hover:border-stroke-strong"
+          >
+            <RotateCcw size={11} /> Retry
+          </button>
+        )}
+      </div>
+    ) : props.empty ? (
+      <div className="flex h-full min-h-24 items-center justify-center p-4">
+        <p className="max-w-64 text-center text-xs leading-relaxed text-mut">
+          {props.emptyText ?? "No data for the current filters. Widen the selection to see results."}
+        </p>
+      </div>
+    ) : typeof props.children === "function" ? (
+      props.children(fullscreen)
+    ) : (
+      props.children
+    );
 
   const card = (fullscreen: boolean) => (
     <section
@@ -79,7 +86,9 @@ export function AnalyticsCard(props: Props) {
             <h2 className="eyebrow truncate">{props.eyebrow}</h2>
           </div>
           <div className="mt-0.5 flex items-baseline gap-2">
-            <span className="truncate text-[13px] font-semibold text-ink">{props.title}</span>
+            <span title={props.title} className="truncate text-[13px] font-semibold text-ink">
+              {props.title}
+            </span>
             {props.subtitle && (
               <span className="truncate font-mono text-[10px] text-mut">{props.subtitle}</span>
             )}
@@ -116,7 +125,7 @@ export function AnalyticsCard(props: Props) {
       <div
         className={`min-h-0 flex-1 ${props.refreshing ? "opacity-60 transition-opacity" : ""} ${props.bodyClassName ?? ""}`}
       >
-        {body}
+        {body(fullscreen)}
       </div>
     </section>
   );

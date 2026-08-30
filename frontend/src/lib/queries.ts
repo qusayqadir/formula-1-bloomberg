@@ -9,11 +9,15 @@ import type {
   CircuitRacecraftRow,
   CircuitSummaryRow,
   Driver,
+  DriverAgeRow,
   DriverRef,
   DriverSummaryRow,
   GridFinishDensityRow,
   HeadToHead,
+  LapPositionRow,
   Page,
+  PitStopRow,
+  PolymarketMarketsResponse,
   QualifyingSegmentsResponse,
   Round,
   SessionResult,
@@ -21,8 +25,10 @@ import type {
   SummaryResponse,
   Team,
   TeamDriver,
+  TeamHeadToHead,
   TeamRef,
   TeamSummaryRow,
+  TrackTypeIndexRow,
 } from "@/lib/types";
 
 const FOREVER = { staleTime: Infinity, placeholderData: keepPreviousData } as const;
@@ -240,6 +246,107 @@ export function useDriver(driverId: number | null) {
     queryKey: ["driver", driverId],
     queryFn: () => fetchJson<Driver>(`/drivers/${driverId}`),
     enabled: driverId != null,
+    ...FOREVER,
+  });
+}
+
+/** Every individual stop for one round — which lap, how long. Metadata
+ *  carries total_laps for the round (2025-only ingest). */
+export function usePitStops(year: number, roundNumber: number | null) {
+  return useQuery({
+    queryKey: ["pitstops", year, roundNumber],
+    queryFn: () =>
+      fetchJson<SummaryResponse<PitStopRow>>("/analytics/pitstops/stops", {
+        year,
+        round_number: roundNumber!,
+      }),
+    enabled: roundNumber != null,
+    ...FOREVER,
+  });
+}
+
+/** Running position for every driver on every lap of one round — the
+ *  substrate for lap-by-lap position charts and stint-length derivation. */
+export function useLapPositions(year: number, roundNumber: number | null) {
+  return useQuery({
+    queryKey: ["lap-positions", year, roundNumber],
+    queryFn: () =>
+      fetchJson<SummaryResponse<LapPositionRow>>("/analytics/pitstops/laps", {
+        year,
+        round_number: roundNumber!,
+      }),
+    enabled: roundNumber != null,
+    ...FOREVER,
+  });
+}
+
+/** Career-wide performance by age-at-race for a set of drivers — independent
+ *  of the season filter (spans 2011–2025). Omit driverIds for the full grid. */
+export function useDriverAgeCurve(driverIds?: number[]) {
+  return useQuery({
+    queryKey: ["driver-age-curve", driverIds ? [...driverIds].sort((a, b) => a - b) : null],
+    queryFn: () =>
+      fetchJson<SummaryResponse<DriverAgeRow>>("/analytics/drivers/age-curve", {
+        driver_ids: driverIds?.length ? driverIds : undefined,
+      }),
+    ...FOREVER,
+  });
+}
+
+/** Driver/team points-per-start at each track_type vs their own overall
+ *  average, over a multi-season window (default: full history). */
+export function useTrackTypeIndex(
+  groupBy: "driver" | "team",
+  yearFrom?: number,
+  yearTo?: number,
+) {
+  return useQuery({
+    queryKey: ["track-type-index", groupBy, yearFrom, yearTo],
+    queryFn: () =>
+      fetchJson<SummaryResponse<TrackTypeIndexRow>>("/analytics/track-type/index", {
+        group_by: groupBy,
+        year_from: yearFrom,
+        year_to: yearTo,
+      }),
+    ...FOREVER,
+  });
+}
+
+/** Live F1 event odds from Polymarket — unlike the historical datasets
+ *  above, this moves, so it's not cached forever. But it only refetches on
+ *  mount (i.e. navigating to /prediction-markets), no background interval —
+ *  staleTime:0 just means a revisit always gets a fresh snapshot rather
+ *  than a possibly-minutes-old cached one. */
+export function usePolymarketMarkets() {
+  return useQuery({
+    queryKey: ["polymarket-markets"],
+    queryFn: () =>
+      fetchJson<PolymarketMarketsResponse>("/markets/polymarket", {
+        event_limit: 20,
+        markets_per_event: 4,
+      }),
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+    retry: 1,
+  });
+}
+
+export function useTeamHeadToHead(
+  a: number | null,
+  b: number | null,
+  year: number,
+  sessionType: SessionType,
+) {
+  return useQuery({
+    queryKey: ["team-h2h", a, b, year, sessionType],
+    queryFn: () =>
+      fetchJson<TeamHeadToHead>("/analytics/comparisons/teams", {
+        team_a: a,
+        team_b: b,
+        year,
+        session_type: sessionType,
+      }),
+    enabled: a != null && b != null && a !== b,
     ...FOREVER,
   });
 }

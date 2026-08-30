@@ -27,6 +27,12 @@ export type PaintOpts = {
   dim: number // selection dim multiplier (0.3 dimmed, 1 normal)
   stacked: boolean // denser + solid floor when layers stack
   sparse?: number // raise the dither threshold (thin out) — front layers
+  /** paintRow only: compute the value-fade density against this [lo, hi]
+   * range instead of the segment's own [base, value] — lets a stacked bar's
+   * fade run continuously across the whole stack instead of resetting solid
+   * at every segment boundary. Segment fill is unaffected (still just
+   * [base, value]); only the density gradient reads from the wider range. */
+  fadeExtent?: [number, number]
 }
 
 // Colour vs opacity — the guiding rule for the whole engine:
@@ -59,8 +65,13 @@ export function paintColumn(
   const f = Math.round(floor)
   const depth = f - t
   if (depth <= 0) {
-    octx.fillStyle = rgb(seed.fill, 1, BORDER_ALPHA * dim)
-    octx.fillRect(x, t, 1, 1)
+    // Only draw a fallback pixel for a genuinely thin (nonzero) bar that
+    // rounds away to nothing — an exactly-zero value (e.g. a stint a driver
+    // never ran) should render as nothing, not a stray dot.
+    if (top !== floor) {
+      octx.fillStyle = rgb(seed.fill, 1, BORDER_ALPHA * dim)
+      octx.fillRect(x, t, 1, 1)
+    }
     return
   }
   const bias = (variant === "dotted" ? 0.12 : 0) + (stacked ? 0.2 : 0) - sparse
@@ -91,6 +102,77 @@ export function paintColumn(
   if (depth > 1) {
     octx.fillStyle = rgb(seed.fill, 1, BORDER_ALPHA * 0.5 * dim)
     octx.fillRect(x, t + 1, 1, 1)
+  }
+}
+
+/**
+ * Row-oriented mirror of {@link paintColumn}, for horizontal bars. Fills one
+ * backing-canvas row `y` from `base` (the zero baseline, dense) rightward to
+ * `value` (dissolving toward the outline, capped with the border there) —
+ * i.e. the same fade-toward-the-value-line look, transposed. `base` must be
+ * <= `value`; callers pass the growth-animated pixel pair pre-ordered. Pass
+ * `fadeExtent` to ramp the density over a wider range than this fill (e.g. a
+ * stacked bar's full width) instead of resetting solid at every segment.
+ */
+export function paintRow(
+  octx: CanvasRenderingContext2D,
+  y: number,
+  base: number,
+  value: number,
+  seed: Seed,
+  { variant, intensity, dim, stacked, sparse = 0, fadeExtent }: PaintOpts
+) {
+  const b = Math.round(base)
+  const v = Math.round(value)
+  const depth = v - b
+  if (depth <= 0) {
+    // Same rule as paintColumn: skip the fallback pixel for an exactly-zero
+    // (missing) segment; only draw it for a thin nonzero one.
+    if (base !== value) {
+      octx.fillStyle = rgb(seed.fill, 1, BORDER_ALPHA * dim)
+      octx.fillRect(b, y, 1, 1)
+    }
+    return
+  }
+  // The stacked dither-threshold bias exists to keep individual segments
+  // reading as solid despite the old locally-compressed [0.5, 1] density
+  // range (below) — with `fadeExtent` supplying a real 0→1 range across the
+  // whole bar, that same bias would instead flatten out the dithering for
+  // any segment sitting in the high-density (early) part of the bar, hiding
+  // its share of the fade entirely. Skip it once `fadeExtent` is doing the
+  // real work.
+  const bias = (variant === "dotted" ? 0.12 : 0) + (stacked && !fadeExtent ? 0.2 : 0) - sparse
+  // `fadeExtent`, when passed, reads the density ramp from a wider [lo, hi]
+  // than this segment's own fill range — the caller uses this to run one
+  // continuous fade across a whole stacked bar. Without it, the ramp is
+  // local to [b, v] (every other caller's existing behavior, unchanged).
+  const [fadeLo, fadeHi] = fadeExtent ?? [b, v]
+  const fadeDepth = Math.max(1, fadeHi - fadeLo)
+  for (let x = b; x < v; x++) {
+    // Falloff: 1 at the base (dense), 0 at the value edge (thinning toward
+    // the outline) — the transpose of paintColumn's top-to-floor falloff.
+    let density = (fadeHi - x) / fadeDepth
+    // The stacked "solid floor" compression exists to keep individual
+    // segments from each showing a harsh full 0→1 fade over their own few
+    // px — moot (and undesired) once `fadeExtent` already spreads the ramp
+    // across the whole bar, so only apply it to the local-range case.
+    if (stacked && !fadeExtent) density = 0.5 + 0.5 * density
+    if (variant === "hatched" && ((x + y) & 3) >= 2) continue
+    const lit =
+      variant === "solid" ||
+      density > BAYER[y & 3][x & 3] - 0.1 * intensity - bias
+    if (variant === "dotted" && !lit) continue
+    const k = (0.3 + density * 0.7) * (1 + 0.22 * intensity)
+    const alpha = clamp01((lit ? k : k * OFF_TIER) * dim)
+    octx.fillStyle = rgb(seed.fill, 1, alpha)
+    octx.fillRect(x, y, 1, 1)
+  }
+  // Border outline at the value edge (the far end from the baseline).
+  octx.fillStyle = rgb(seed.fill, 1, BORDER_ALPHA * dim)
+  octx.fillRect(v - 1, y, 1, 1)
+  if (depth > 1) {
+    octx.fillStyle = rgb(seed.fill, 1, BORDER_ALPHA * 0.5 * dim)
+    octx.fillRect(v - 2, y, 1, 1)
   }
 }
 
