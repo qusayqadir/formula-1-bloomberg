@@ -2,7 +2,7 @@
 
 ### AWS Architecture:
 
-<img width="3080" height="1528" alt="AWS F1-Bloomberg Terminal Architecture" src="https://github.com/user-attachments/assets/583aba36-722f-47aa-bff2-c3a8e4f3b2b4" />
+<img width="3080" height="1969" alt="AWS F1-Terminal Architecture" src="https://github.com/user-attachments/assets/9ca0a686-8acf-4431-be8c-0e4d65a5b58c" />
 
 ### Chatbot LangGraph Workflow 
 
