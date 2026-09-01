@@ -83,7 +83,7 @@ export function HistoricalDashboard() {
         <GridFinishSlope entities={entities} className="h-[720px] md:col-span-1 xl:col-span-4" />
         <FastestLapGap entities={entities} className="h-[720px] md:col-span-1 xl:col-span-3" />
 
-        {/* pit stops — focused-round strategy views, 2025-only ingest */}
+        {/* pit stops — focused-round strategy views; lap/pit data ingested for selected rounds only */}
         <PositionsAroundPits entities={entities} className="h-[620px] md:col-span-2 xl:col-span-8" />
         <RaceReplayPromo className="h-[620px] md:col-span-2 xl:col-span-4" />
         <TireStints entities={entities} className="h-[720px] md:col-span-2 xl:col-span-12" />
@@ -113,14 +113,15 @@ export function HistoricalDashboard() {
 
         <CircuitMatrix entities={entities} className="h-[620px] md:col-span-2 xl:col-span-12" />
 
-        {/* career / archetype views — 2011–2025, independent of the season filter */}
+        {/* career / archetype views — 2011 → latest season, independent of the season filter */}
         <DriverAgeCurve entities={entities} className="h-[460px] md:col-span-2 xl:col-span-6" />
         <TrackTypePerformanceMatrix className="h-[460px] md:col-span-2 xl:col-span-6" />
       </div>
 
       <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-mut">
-        Historical data 2011–2025 · race classifications, championship snapshots, circuits ·
-        pit-stop and lap data available for 2025 only · no telemetry, tyre or weather data in source schema
+        Historical data 2011–2026 (2026 season in progress) · race classifications, championship
+        snapshots, circuits · lap-by-lap and pit-stop timing for selected rounds · no telemetry, tyre
+        or weather data in source schema
       </p>
     </div>
   );

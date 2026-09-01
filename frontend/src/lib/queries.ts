@@ -251,7 +251,7 @@ export function useDriver(driverId: number | null) {
 }
 
 /** Every individual stop for one round — which lap, how long. Metadata
- *  carries total_laps for the round (2025-only ingest). */
+ *  carries total_laps for the round. */
 export function usePitStops(year: number, roundNumber: number | null) {
   return useQuery({
     queryKey: ["pitstops", year, roundNumber],
@@ -281,7 +281,7 @@ export function useLapPositions(year: number, roundNumber: number | null) {
 }
 
 /** Career-wide performance by age-at-race for a set of drivers — independent
- *  of the season filter (spans 2011–2025). Omit driverIds for the full grid. */
+ *  of the season filter (spans 2011 → latest season). Omit driverIds for the full grid. */
 export function useDriverAgeCurve(driverIds?: number[]) {
   return useQuery({
     queryKey: ["driver-age-curve", driverIds ? [...driverIds].sort((a, b) => a - b) : null],

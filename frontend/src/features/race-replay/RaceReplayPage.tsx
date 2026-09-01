@@ -8,9 +8,9 @@ import { EChart } from "@/components/charts/EChart";
 import { MONO, useChartTheme } from "@/components/charts/theme";
 import { teamColor, withAlpha } from "@/lib/colors";
 import { driverCode, formatLapTime, shortRoundName } from "@/lib/format";
-import { useLapPositions, usePitStops, useSeasonResults, useSeasonRounds } from "@/lib/queries";
+import { useLapPositions, usePitStops, useSeasonResults } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
-import { focusRound } from "@/features/dashboard/selectors";
+import { focusRound, roundsFromResults } from "@/features/dashboard/selectors";
 
 type Speed = "0.5" | "1" | "2" | "4";
 const SPEED_MS: Record<Speed, number> = { "0.5": 1200, "1": 600, "2": 300, "4": 150 };
@@ -34,6 +34,11 @@ interface StandingRow {
    *  grid rows, used to tell a genuine DNF apart from a merely lapped car
    *  whose lap-position data happens to end a lap short too. */
   finalStatus?: string | null;
+  /** True for a ghost row with zero recorded laps for the whole race — takes
+   *  priority over finalStatus in the tag, since "never started" is more
+   *  useful to a lap-by-lap viewer than the specific results-dataset cause
+   *  (Withdrew/Injury/Did not start/…), which all mean the same thing here. */
+  neverStarted?: boolean;
 }
 
 interface DriverSeries {
@@ -54,20 +59,17 @@ export function RaceReplayPage() {
   const C = useChartTheme();
   const { t } = C;
 
-  const roundsQuery = useSeasonRounds(filters.year);
-  const rounds = useMemo(
-    () =>
-      (roundsQuery.data?.items ?? [])
-        .filter((r) => r.number != null)
-        .map((r) => ({ number: r.number as number, name: r.name })),
-    [roundsQuery.data],
-  );
+  // Rounds come from actual race results, not the scheduled calendar, so a
+  // mid-season year (e.g. 2026) offers only completed rounds — never a future
+  // race with no data yet — and focusRound defaults to the latest completed
+  // round instead of an empty calendar slot.
+  const resultsQuery = useSeasonResults(filters.year, "Race");
+  const rounds = useMemo(() => roundsFromResults(resultsQuery.data?.items), [resultsQuery.data]);
   const round = focusRound(rounds, filters);
-  const roundName = rounds.find((r) => r.number === round)?.name;
+  const roundName = rounds.find((r) => r.number === round)?.name ?? null;
 
   const lapsQuery = useLapPositions(filters.year, round);
   const stopsQuery = usePitStops(filters.year, round);
-  const resultsQuery = useSeasonResults(filters.year, "Race");
 
   // Lap 0 — the starting grid, no lap time yet. Sourced from the results
   // dataset's `grid` column rather than bronze.laps (which only starts at
@@ -95,14 +97,13 @@ export function RaceReplayPage() {
       .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
   }, [resultsQuery.data, round]);
 
-  const { byLap, maxLap, seriesByDriver, pitDurations, retiredLastLap } = useMemo(() => {
+  const { byLap, maxLap, seriesByDriver, pitDurations, retiredLastLap, retiredReason } = useMemo(() => {
     const gridByDriver = new Map<number, number>();
     for (const g of gridRows) if (g.position != null) gridByDriver.set(g.driverId, g.position);
 
     const rows = lapsQuery.data?.rows ?? [];
     const byLapNumber = new Map<number, typeof rows>();
     const lastLap = new Map<number, number>();
-    const lastRow = new Map<number, (typeof rows)[number]>();
     let observedMax = 0;
     for (const r of rows) {
       observedMax = Math.max(observedMax, r.lap_number);
@@ -112,10 +113,7 @@ export function RaceReplayPage() {
         byLapNumber.set(r.lap_number, bucket);
       }
       bucket.push(r);
-      if ((lastLap.get(r.driver.id) ?? 0) < r.lap_number) {
-        lastLap.set(r.driver.id, r.lap_number);
-        lastRow.set(r.driver.id, r);
-      }
+      if ((lastLap.get(r.driver.id) ?? 0) < r.lap_number) lastLap.set(r.driver.id, r.lap_number);
     }
     const totalLaps = (lapsQuery.data?.metadata.total_laps as number | null) ?? observedMax;
 
@@ -127,10 +125,21 @@ export function RaceReplayPage() {
     // fully classified but, being a lap down, its recorded lap data
     // legitimately stops one lap short of the leader's total. Relying on the
     // data gap alone would mislabel every lapped car as a DNF.
-    const DNF_STATUSES = new Set(["Retired", "Disqualified", "Did not start"]);
+    //
+    // Matched by exclusion, not a whitelist: `status` is "Finished" for
+    // on-lead-lap finishers, "Lapped" or "+N Lap(s)" for classified-but-lapped
+    // finishers, and one of ~70 specific-cause strings otherwise. Pre-2023
+    // seasons carry the specific cause (Collision, Engine, Wheel nut…); only
+    // 2023+ mostly collapses to the generic "Retired" (see CLAUDE.md's bronze
+    // gap notes). A whitelist of just the generic strings would miss every
+    // pre-2023 retirement, rendering a crashed-out driver as a normal,
+    // still-competing row frozen at a stale position instead of being
+    // dimmed and labeled RETIRED — which is exactly what produced duplicate
+    // position numbers once the field renumbered around them (e.g. 2012 R5).
+    const CLASSIFIED_NOT_RETIRED = /^(Finished|Lapped|\+\d+\s+Laps?)$/;
     const retiredDriverIds = new Set<number>();
     for (const g of gridRows) {
-      if (g.finalStatus && DNF_STATUSES.has(g.finalStatus)) retiredDriverIds.add(g.driverId);
+      if (g.finalStatus && !CLASSIFIED_NOT_RETIRED.test(g.finalStatus)) retiredDriverIds.add(g.driverId);
     }
 
     // A driver can retire before completing a single lap (formation-lap or
@@ -147,7 +156,22 @@ export function RaceReplayPage() {
       if (last < totalLaps) dataEndLap.set(id, last);
     }
     const retiredLastLap = new Map<number, number>(); // subset of dataEndLap — true DNFs only, drives the red chart styling
-    for (const [id, last] of dataEndLap) if (retiredDriverIds.has(id)) retiredLastLap.set(id, last);
+    // driverId -> label for the chart's DNF marker/tooltip. Zero recorded laps
+    // always reads "Never started" — more useful to a lap-by-lap viewer than
+    // the specific results-dataset cause (Withdrew/Injury/Did not start/…),
+    // which all mean the same thing here — matching the standings tag.
+    const retiredReason = new Map<number, string>();
+    for (const [id, last] of dataEndLap) {
+      if (retiredDriverIds.has(id)) {
+        retiredLastLap.set(id, last);
+        if (last === 0) {
+          retiredReason.set(id, "Never started");
+        } else {
+          const status = gridRowById.get(id)?.finalStatus;
+          if (status) retiredReason.set(id, status);
+        }
+      }
+    }
 
     const pitDurations = new Map<number, Map<number, number>>(); // driverId -> lap -> duration
     for (const s of stopsQuery.data?.rows ?? []) {
@@ -189,6 +213,16 @@ export function RaceReplayPage() {
 
     const lastPosition = new Map<number, number>();
     const cumulativeTime = new Map<number, number>(); // driverId -> race time so far, laps 1..totalLaps
+    // driverId -> most recent real lap row seen so far, updated as the loop
+    // below walks forward — NOT the same as "their absolute last row for the
+    // whole race". A driver's lap coverage can have a mid-race hole (a real
+    // bronze-data gap, not just an end-of-race retirement — e.g. 2014 R1
+    // Vettel has laps 1-3 then nothing until a lap 26 row, Bianchi has a
+    // 50-54 hole). Using the driver's overall-last row as every gap lap's
+    // ghost source made them vanish entirely for the gap instead of freezing
+    // at their true most-recent position — this carry-forward map fixes
+    // that by only ever looking backward from the lap currently being built.
+    const mostRecentRow = new Map<number, (typeof rows)[number]>();
     const built = new Map<number, StandingRow[]>();
     for (let lap = 1; lap <= totalLaps; lap++) {
       const bucket = byLapNumber.get(lap) ?? [];
@@ -225,19 +259,20 @@ export function RaceReplayPage() {
         };
       });
 
-      // Drivers whose recorded lap data is behind us — keep them visible,
-      // frozen at their last known position, instead of letting them
-      // silently vanish from the list. Most of these are genuine DNFs (incl.
-      // lap-0/lap-1 retirements with zero laps recorded, e.g. a
-      // formation-lap crash); a few are just lapped classified cars whose
-      // data legitimately ends a lap early — those render as a normal row
-      // (see `retired` below, sourced from race-result status, not this gap).
+      // Every known entrant not in this lap's real data — keep them visible,
+      // frozen at their most recent known position, instead of letting them
+      // silently vanish from the list. Covers real DNFs (incl. lap-0/lap-1
+      // retirements with zero laps recorded, e.g. a formation-lap crash),
+      // lapped classified cars whose data legitimately ends a lap early (see
+      // `retired` below, sourced from race-result status, not this gap), AND
+      // a genuine mid-race hole in bronze.laps for an otherwise-still-racing
+      // driver — freezing at `mostRecentRow` (not the driver's absolute last
+      // row for the whole race) means they reappear live the moment their
+      // real data resumes instead of staying frozen through it.
       const ghosts: StandingRow[] = [];
       for (const driverId of allDriverIds) {
-        const last = dataEndLap.get(driverId);
-        if (last == null || last >= lap) continue;
         if (bucket.some((b) => b.driver.id === driverId)) continue;
-        const r = lastRow.get(driverId);
+        const r = mostRecentRow.get(driverId);
         const grid = gridRowById.get(driverId);
         if (!r && !grid) continue;
         const position = r ? r.position : (grid as StandingRow).position;
@@ -259,8 +294,11 @@ export function RaceReplayPage() {
           pitted: false,
           pitDurationSec: null,
           retired: retiredDriverIds.has(driverId),
+          finalStatus: gridRowById.get(driverId)?.finalStatus ?? null,
+          neverStarted: (lastLap.get(driverId) ?? 0) === 0,
         });
       }
+      for (const r of bucket) mostRecentRow.set(r.driver.id, r);
 
       const entries = [...active, ...ghosts].sort((a, b) => {
         const ka = a.retired ? 1000 + (a.position ?? 999) : (a.position ?? 999);
@@ -288,7 +326,7 @@ export function RaceReplayPage() {
 
       built.set(lap, entries);
     }
-    return { byLap: built, maxLap: totalLaps, seriesByDriver, pitDurations, retiredLastLap };
+    return { byLap: built, maxLap: totalLaps, seriesByDriver, pitDurations, retiredLastLap, retiredReason };
   }, [lapsQuery.data, stopsQuery.data, gridRows, t.neutral]);
 
   const [currentLap, setCurrentLap] = useState(0);
@@ -319,7 +357,7 @@ export function RaceReplayPage() {
   }, [playing, speed, maxLap]);
 
   const standings = currentLap === 0 ? gridRows : byLap.get(currentLap) ?? [];
-  const loading = lapsQuery.isPending || roundsQuery.isPending || resultsQuery.isPending;
+  const loading = lapsQuery.isPending || resultsQuery.isPending;
   const empty = !loading && !lapsQuery.error && maxLap === 0;
 
   // Grid slot becomes each driver's lap-0 anchor point on the chart, so the
@@ -354,6 +392,7 @@ export function RaceReplayPage() {
       // dropped out on — before that (or at the lap-0 grid view) their line
       // is still legitimately growing, same as everyone else's.
       const isDnf = currentLap > 0 && retiredLap != null && currentLap >= retiredLap;
+      const reason = retiredReason.get(driverId);
       const lastVisibleIndex = visible.length - 1;
       return {
         name: d.code,
@@ -366,7 +405,7 @@ export function RaceReplayPage() {
         blur: { lineStyle: { opacity: 0.08 }, itemStyle: { opacity: 0.08 }, label: { show: false } },
         endLabel: {
           show: true,
-          formatter: isDnf ? `${d.code} DNF` : d.code,
+          formatter: isDnf ? `${d.code} ${(reason ?? "Retired").toUpperCase()}` : d.code,
           color: isDnf ? t.neg : t.labelBright,
           fontFamily: MONO,
           fontSize: 9,
@@ -410,7 +449,7 @@ export function RaceReplayPage() {
               C.tipRow("LAP", value[0] === 0 ? "Grid" : `${value[0]}`),
               C.tipRow("POSITION", `P${value[1]}`),
               ...(isPit ? [C.tipRow("PIT STOP", "yes", { swatch: d.color })] : []),
-              ...(isDnfPoint ? [C.tipRow("STATUS", "DNF / Retired", { swatch: t.neg })] : []),
+              ...(isDnfPoint ? [C.tipRow("STATUS", (reason ?? "Retired").toUpperCase(), { swatch: t.neg })] : []),
             ]);
           },
         },
@@ -435,7 +474,7 @@ export function RaceReplayPage() {
       },
       series,
     };
-  }, [seriesByDriverWithGrid, pitDurations, retiredLastLap, currentLap, maxLap, C, t]);
+  }, [seriesByDriverWithGrid, pitDurations, retiredLastLap, retiredReason, currentLap, maxLap, C, t]);
 
   return (
     <div className="px-5 pb-10">
@@ -541,14 +580,14 @@ export function RaceReplayPage() {
           title="Lap-by-lap standings"
           subtitle={
             round
-              ? `R${round} ${shortRoundName(roundName)} · lap ${currentLap}/${maxLap || "—"} · 2025 Race sessions only`
+              ? `R${round} ${shortRoundName(roundName)} · lap ${currentLap}/${maxLap || "—"} · Race sessions`
               : String(filters.year)
           }
           loading={loading}
           error={(lapsQuery.error as Error | null) ?? (stopsQuery.error as Error | null)}
           onRetry={() => lapsQuery.refetch()}
           empty={empty}
-          emptyText="No lap-by-lap data for this round yet — ingest currently only covers the 2025 season."
+          emptyText="No lap-by-lap data for this round yet — lap timing isn't ingested for every round; try another round or season."
           className="min-h-[420px] xl:col-span-5"
           bodyClassName="p-2"
         >
@@ -588,15 +627,18 @@ export function RaceReplayPage() {
                   />
                   <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
                     <span className="font-sans text-[12px] font-medium text-ink">{row.code}</span>
-                    <span className="truncate font-sans text-[11px] text-sub">{row.surname}</span>
+                    <span className="truncate font-sans text-[11px] text-sub">
+                      {row.surname}
+                      {row.teamName && row.teamName !== "—" && <span className="text-mut"> · {row.teamName}</span>}
+                    </span>
                     {row.pitted && (
                       <span className="flex-none rounded-sm bg-amber/15 px-1 font-mono text-[9px] font-semibold text-amber">
                         PIT {row.pitDurationSec != null ? `${row.pitDurationSec.toFixed(1)}s` : ""}
                       </span>
                     )}
                     {row.retired && (
-                      <span className="flex-none rounded-sm bg-neg/15 px-1 font-mono text-[9px] font-semibold text-neg">
-                        RETIRED
+                      <span className="flex-none whitespace-nowrap rounded-sm bg-neg/15 px-1 font-mono text-[9px] font-semibold uppercase text-neg">
+                        {row.neverStarted ? "Never started" : row.finalStatus || "Retired"}
                       </span>
                     )}
                   </span>

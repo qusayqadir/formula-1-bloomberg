@@ -113,7 +113,7 @@ export const SURFACE = CHART_DARK.surface;
 export const FALLBACK_SERIES = CHART_DARK.fallbackSeries;
 export const SEQ_RAMP = CHART_DARK.seqRamp;
 
-/** name-pattern → identity color (2011–2025 grid). Order matters: more
+/** name-pattern → identity color (2011 → current grid). Order matters: more
  *  specific franchises (Racing Bulls vs Red Bull) match first. */
 const TEAM_COLOR_PATTERNS: [RegExp, string][] = [
   [/racing bulls|alphatauri|toro rosso/i, "#6c98ff"],

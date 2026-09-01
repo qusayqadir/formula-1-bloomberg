@@ -73,7 +73,7 @@ export function DocsApis() {
       </div>
       <p className="mt-2 max-w-xl text-xs leading-relaxed text-sub">
         Read-only FastAPI service over the ingested historic database (schema{" "}
-        <code className="font-mono text-[11px] text-ink">bronze</code>, seasons 2011–2025). All
+        <code className="font-mono text-[11px] text-ink">bronze</code>, seasons 2011–2026). All
         endpoints are GET; list endpoints share the same filter set as{" "}
         <code className="font-mono text-[11px] text-ink">/results</code>.
       </p>

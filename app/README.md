@@ -16,9 +16,9 @@
   - [x] ++ingest pitstop data++
   - [x] ++ingest lap data++ 
     - [x] ++race recap just for 2025 season++ 
-    - [ ] fix issue to assume driver is retired when in reality they have been lapped and didnt finsih all laps of race
-    - [ ] 
-  - [ ] add way more laps. 
+    - [x] ingest all data backlog for all the years in pitstops, laps, quali ( everything available between 2011 and 2026 ) 
+    - [x] fix issue to assume driver is retired when in reality they have been lapped and didnt finsih all laps of rac
+  - [x] add way more laps. 
   - [ ] ingest race control data - openf1 
   - [ ] ingest driver cost data ( for each crash how much they were liable for? )  find api for this data 
   - [ ] driver career stats? WC, Wins, Poles? in team profiles 
@@ -41,3 +41,4 @@ Work on team profiles
     - [ ] ++track/circuit images++ 
   - [x] Move regulation docs onto AWS-managed Mongodb
   - [ ] config elastic ip for ec2 instance and add it to accepted network ips for atlas
+  - [x] config rds (db.t4.micro) for data platform + network inbound rules from only my comptuer for now - change it to elastic ec2 ip once code is pushed there 

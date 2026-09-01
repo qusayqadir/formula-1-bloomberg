@@ -6,3 +6,7 @@ __pycache__/
 .vscode/
 
 fia_regulations_data/
+app/pipeline/ingest/data/.ingest_checkpoint.json
+app/pipeline/ingest/data/.rate_limit_log.json
+app/pipeline/ingest/data/.rate_limit.lock
+app/pipeline/ingest/data/.checkpoint.lock

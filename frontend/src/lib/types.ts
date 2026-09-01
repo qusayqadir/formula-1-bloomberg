@@ -337,8 +337,8 @@ export interface QualifyingSegmentsResponse {
 }
 
 /** GET /analytics/pitstops/stops — one row per stop, one focused round;
- *  duration_sec is the full pit-lane time (entry to exit). 2025-only
- *  (bronze gap: pit-stop/lap ingest is not yet backfilled to prior seasons). */
+ *  duration_sec is the full pit-lane time (entry to exit). Coverage is partial
+ *  (bronze gap: pit-stop rows are ingested for a subset of seasons only). */
 export interface PitStopRow {
   round_id: number;
   year: number;
@@ -367,7 +367,7 @@ export interface LapPositionRow {
 }
 
 /** GET /analytics/drivers/age-curve — one row per driver per age-year,
- *  career-wide (2011–2025, independent of the season filter). */
+ *  career-wide (2011 → latest season, independent of the season filter). */
 export interface DriverAgeRow {
   driver: DriverRef;
   age: number;

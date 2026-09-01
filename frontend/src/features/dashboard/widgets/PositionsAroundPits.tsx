@@ -10,7 +10,7 @@ import { MONO, useChartTheme } from "@/components/charts/theme";
 import { withAlpha } from "@/lib/colors";
 import { useLapPositions, usePitStops, useSeasonResults, useSeasonRounds } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
-import { focusRound, statusBucket, visibleDriverIds } from "@/features/dashboard/selectors";
+import { completedRounds, focusRound, statusBucket, visibleDriverIds } from "@/features/dashboard/selectors";
 import { driverCode, shortRoundName } from "@/lib/format";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 
@@ -20,13 +20,7 @@ export function PositionsAroundPits(props: { entities: SeasonEntities; className
   const { t, axisLabel, baseGrid, baseTooltip, valueAxis } = C;
 
   const roundsQuery = useSeasonRounds(filters.year);
-  const rounds = useMemo(
-    () =>
-      (roundsQuery.data?.items ?? [])
-        .filter((r) => r.number != null)
-        .map((r) => ({ number: r.number as number, name: r.name })),
-    [roundsQuery.data],
-  );
+  const rounds = useMemo(() => completedRounds(roundsQuery.data?.items), [roundsQuery.data]);
   const round = focusRound(rounds, filters);
   const roundName = rounds.find((r) => r.number === round)?.name;
 

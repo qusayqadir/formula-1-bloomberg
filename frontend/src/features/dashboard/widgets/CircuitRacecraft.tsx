@@ -1,5 +1,5 @@
-/** Pole conversion vs order shuffle per circuit, 2011–2025. One dot per
- *  circuit (size = races held): bottom-left is processional and pole-locked
+/** Pole conversion vs order shuffle per circuit, 2011 → latest season. One dot
+ *  per circuit (size = races held): bottom-left is processional and pole-locked
  *  (Monaco country), top-right rewards racecraft. Single hue — identity
  *  lives in the selective labels and the tooltip, never in color. */
 import { useMemo } from "react";
@@ -8,10 +8,10 @@ import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
 import { MONO, useChartTheme } from "@/components/charts/theme";
 import { useCircuitRacecraft } from "@/lib/queries";
+import { useFilters } from "@/state/filters";
 import { quantileSorted } from "@/features/dashboard/selectors";
 
 const YEAR_FROM = 2011;
-const YEAR_TO = 2025;
 const MIN_RACES = 4;
 
 /** First distinctive word(s) of a circuit name ("Circuit de Monaco" → Monaco). */
@@ -29,7 +29,8 @@ function shortName(name: string): string {
 export function CircuitRacecraft(props: { className?: string }) {
   const C = useChartTheme();
   const { t, axisLabel, baseTooltip, valueAxis } = C;
-  const query = useCircuitRacecraft(YEAR_FROM, YEAR_TO);
+  const { latestYear } = useFilters();
+  const query = useCircuitRacecraft(YEAR_FROM, latestYear);
 
   const option = useMemo<EChartsOption | null>(() => {
     const rows = (query.data?.rows ?? []).filter(
@@ -123,7 +124,7 @@ export function CircuitRacecraft(props: { className?: string }) {
     <AnalyticsCard
       eyebrow="Circuits · Racecraft"
       title="Pole conversion vs shuffle"
-      subtitle={`${YEAR_FROM}–${YEAR_TO} · circuits with ${MIN_RACES}+ races · dot = races held`}
+      subtitle={`${YEAR_FROM}–${latestYear} · circuits with ${MIN_RACES}+ races · dot = races held`}
       loading={query.isPending}
       refreshing={query.isFetching && !query.isPending}
       error={query.error as Error | null}

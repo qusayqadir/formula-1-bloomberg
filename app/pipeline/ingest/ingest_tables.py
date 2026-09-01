@@ -1,8 +1,12 @@
+import fcntl
+import json
 import os
 import time
+from pathlib import Path
 from typing import Optional
 import requests
 from datetime import datetime
+
 
 from app.pipeline.ingest.models import (
     CircuitModel,
@@ -26,6 +30,49 @@ DRIVERS_URL = f"{BASE_URL}/drivers.json"
 SEASON_URL = f"{BASE_URL}/seasons/"
 TEAM_URL = f"{BASE_URL}/constructors/"
 
+RATE_LIMIT_MAX_PER_SECOND = 4
+RATE_LIMIT_MAX_PER_HOUR = 480
+RATE_LIMIT_LOG_PATH = Path(__file__).parent / "data" / ".rate_limit_log.json"
+RATE_LIMIT_LOCK_PATH = Path(__file__).parent / "data" / ".rate_limit.lock"
+CHECKPOINT_LOCK_PATH = Path(__file__).parent / "data" / ".checkpoint.lock"
+
+
+def _acquire_rate_limit_slot() -> None:
+    RATE_LIMIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(RATE_LIMIT_LOCK_PATH, "w") as lock_file:
+        while True:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+            try:
+                now = time.time()
+                timestamps = []
+                if RATE_LIMIT_LOG_PATH.exists():
+                    with open(RATE_LIMIT_LOG_PATH) as f:
+                        try:
+                            timestamps = json.load(f)
+                        except json.JSONDecodeError:
+                            # A worker that got suspended (Ctrl-Z) mid-write and
+                            # resumed later can interleave a stale write with a
+                            # fresh one even under flock, corrupting the file.
+                            # It's just a rolling ledger of request times, so
+                            # dropping it and re-pacing from empty is safe.
+                            print(f"{RATE_LIMIT_LOG_PATH} was corrupt, resetting.")
+                timestamps = [t for t in timestamps if now - t < 3600]
+
+                recent_second = [t for t in timestamps if now - t < 1.0]
+                if len(recent_second) < RATE_LIMIT_MAX_PER_SECOND and len(timestamps) < RATE_LIMIT_MAX_PER_HOUR:
+                    timestamps.append(now)
+                    with open(RATE_LIMIT_LOG_PATH, "w") as f:
+                        json.dump(timestamps, f)
+                    return
+
+                if len(timestamps) >= RATE_LIMIT_MAX_PER_HOUR:
+                    wait = 3600 - (now - min(timestamps)) + 0.05
+                else:
+                    wait = 1.0 - (now - min(recent_second)) + 0.05
+            finally:
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
+            time.sleep(max(wait, 0.05))
+
 
 def fetch_circuits() -> list[CircuitModel]:
     circuits = []
@@ -33,7 +80,7 @@ def fetch_circuits() -> list[CircuitModel]:
     limit = 100
 
     while True:
-        response = requests.get(CIRCUITS_URL, params={"limit": limit, "offset": offset})
+        response = requests.get(CIRCUITS_URL, params={"limit": limit, "offset": offset}, timeout=30)
         response.raise_for_status()
         data = response.json()["MRData"]
         batch = data["CircuitTable"]["Circuits"]
@@ -52,7 +99,7 @@ def fetch_drivers() -> list[DriverModel]:
     limit = 100
 
     while True:
-        response = requests.get(DRIVERS_URL, params={"limit": limit, "offset": offset})
+        response = requests.get(DRIVERS_URL, params={"limit": limit, "offset": offset}, timeout=30)
         response.raise_for_status()
         data = response.json()["MRData"]
         batch = data["DriverTable"]["Drivers"]
@@ -73,7 +120,7 @@ def fetch_seasons() -> list[SeasonModel]:
     
     while True: 
 
-        response = requests.get(SEASON_URL, params={"limit": limit, "offset":offset})
+        response = requests.get(SEASON_URL, params={"limit": limit, "offset":offset}, timeout=30)
         response.raise_for_status() 
         data = response.json()["MRData"]
         batch = data["SeasonTable"]["Seasons"]
@@ -93,7 +140,7 @@ def fetch_constructors() -> list[TeamModel]:
 
     while True: 
 
-        response = requests.get(TEAM_URL, params={"limit":limit, "offset":offset})
+        response = requests.get(TEAM_URL, params={"limit":limit, "offset":offset}, timeout=30)
         response.raise_for_status() 
         data = response.json()["MRData"]
         batch = data["ConstructorTable"]["Constructors"]
@@ -111,7 +158,7 @@ def fetch_rounds() -> list[RoundModel]:
     start_year = 2011
     curr_year = datetime.now().year
 
-    while start_year < curr_year:
+    while start_year <= curr_year:
         TEMP_ROUND_URL = f"{BASE_URL}/{str(start_year)}/races.json"
 
         response = _get_with_retry(TEMP_ROUND_URL)
@@ -123,31 +170,44 @@ def fetch_rounds() -> list[RoundModel]:
         
     return rounds
 
-def _get_with_retry(url: str, params: Optional[dict] = None, retries: int = 3, backoff: float = 5.0):
-    """GET with exponential backoff on 429 and on connection-level failures
-    (the API sometimes resets the connection outright instead of returning
-    429 once a client's been rate-limited for a while). Sleeps 0.5s between
-    every request."""
-    time.sleep(0.5)
-    for attempt in range(retries):
+def _get_with_retry(
+    url: str,
+    params: Optional[dict] = None,
+    retries: int = 3,
+    backoff: float = 5.0,
+    max_rate_limit_retries: int = 12,
+    rate_limit_backoff: float = 30.0,
+    rate_limit_max_wait: float = 600.0,
+):
+    connection_attempt = 0
+    rate_limit_attempt = 0
+    while True:
+        _acquire_rate_limit_slot()
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=30)
         except requests.exceptions.RequestException as exc:
-            wait = backoff * (2 ** attempt)
-            print(f"{exc.__class__.__name__}. Waiting {wait}s before retry {attempt + 1}/{retries}...")
+            connection_attempt += 1
+            if connection_attempt > retries:
+                raise
+            wait = backoff * (2 ** (connection_attempt - 1))
+            print(f"{exc.__class__.__name__}. Waiting {wait}s before retry {connection_attempt}/{retries}...")
             time.sleep(wait)
             continue
+
         if response.status_code == 429:
-            wait = backoff * (2 ** attempt)
-            print(f"Rate limited. Waiting {wait}s before retry {attempt + 1}/{retries}...")
+            rate_limit_attempt += 1
+            if rate_limit_attempt > max_rate_limit_retries:
+                response.raise_for_status()
+            retry_after = response.headers.get("Retry-After")
+            wait = float(retry_after) if retry_after else min(
+                rate_limit_max_wait, rate_limit_backoff * (2 ** (rate_limit_attempt - 1))
+            )
+            print(f"Rate limited ({rate_limit_attempt}/{max_rate_limit_retries}). Waiting {wait:.0f}s...")
             time.sleep(wait)
             continue
+
         response.raise_for_status()
         return response
-    # last attempt: let a connection error propagate, or raise on a bad status
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    return response
 
 
 def fetch_race_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel], list[SessionEntryModel]]:
@@ -156,7 +216,7 @@ def fetch_race_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel], 
     round_entries = []
     session_entries = []
 
-    for year in range(2011, datetime.now().year):
+    for year in range(2011, datetime.now().year + 1):
         offset=0
         limit=100
         while True:
@@ -257,7 +317,7 @@ def fetch_quali_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel],
     round_entries = []
     session_entries = []
 
-    for year in range(2011, datetime.now().year):
+    for year in range(2011, datetime.now().year + 1):
         offset = 0
         limit = 100
         while True:
@@ -336,7 +396,7 @@ def fetch_sprint_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel]
     round_entries = []
     session_entries = []
 
-    for year in range(2011, datetime.now().year):
+    for year in range(2011, datetime.now().year + 1):
         offset = 0
         limit = 100
         while True:
@@ -416,20 +476,60 @@ def fetch_sprint_results() -> tuple[list[TeamDriverModel], list[RoundEntryModel]
 
     return team_drivers, round_entries, session_entries
 
-def fetch_lap_data():
-    """Yields (year, list[LapModel]) one season at a time, sleeping 60s
-    between seasons — a full 2011-present backfill run back-to-back with no
-    pause is what sustains enough request volume to trigger the API's
-    rate-limiting/connection-reset cascade."""
-    limit = 100
-    years = list(range(2011, datetime.now().year))
+CHECKPOINT_PATH = Path(__file__).parent / "data" / ".ingest_checkpoint.json"
 
-    for i, year in enumerate(years):
-        lap_entries = []
+
+def _load_checkpoint() -> dict:
+    if not CHECKPOINT_PATH.exists():
+        return {}
+    with open(CHECKPOINT_PATH) as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            # Same interleaved-write corruption risk as the rate-limit log.
+            # Losing this just means re-fetching already-done years; DB
+            # inserts are ON CONFLICT DO NOTHING, so that's wasteful, not
+            # unsafe.
+            print(f"{CHECKPOINT_PATH} was corrupt, resetting.")
+            return {}
+
+
+def _save_checkpoint(key: str, value: dict) -> None:
+    CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CHECKPOINT_LOCK_PATH, "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            data = _load_checkpoint()
+            data[key] = value
+            with open(CHECKPOINT_PATH, "w") as f:
+                json.dump(data, f)
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+
+def fetch_lap_data(start_year: int = 2011, end_year: Optional[int] = None, checkpoint_key: str = "laps"):
+    limit = 100
+    # Only defaults to the last COMPLETE season when the caller doesn't say
+    # otherwise — an explicit end_year (e.g. the current, still-in-progress
+    # season) is honored as-is rather than clamped down.
+    end_year = end_year if end_year is not None else datetime.now().year - 1
+    years = list(range(start_year, end_year + 1))
+
+    checkpoint = _load_checkpoint().get(checkpoint_key)
+    if checkpoint:
+        print(f"[{checkpoint_key}] Resuming lap ingest after {checkpoint['year']} round {checkpoint['round']}")
+
+    for year_idx, year in enumerate(years):
+        if checkpoint and year < checkpoint["year"]:
+            continue
+
         response = _get_with_retry(f"{BASE_URL}/{year}/races.json")
         total_round = int(response.json()["MRData"]["total"])
 
-        for curr_round in range(1, total_round + 1):
+        start_round = checkpoint["round"] + 1 if checkpoint and year == checkpoint["year"] else 1
+
+        for curr_round in range(start_round, total_round + 1):
+            lap_entries = []
             session_api_id = f"{year}_{curr_round}_Race"
             offset = 0
             while True:
@@ -467,19 +567,28 @@ def fetch_lap_data():
                 if offset >= int(data["total"]):
                     break
 
-        yield year, lap_entries
+            yield year, curr_round, lap_entries
 
-        if i < len(years) - 1:
-            print(f"Sleeping 60s before fetching {years[i + 1]}...")
-            time.sleep(60)
+            # only checkpointed once the caller has finished processing this
+            # round (inserted it), so a crash never leaves a round marked
+            # done without its rows actually in the database
+            _save_checkpoint(checkpoint_key, {"year": year, "round": curr_round})
 
-#pit_stops.lap_id is a NOT NULL FK into bronze.laps, so this must cover the
-#same year range as fetch_lap_data (laps has to be ingested first)
-def fetch_pitstop_data() -> list[PitStopModel]:
-    pitstop_entries = []
+def fetch_pitstop_data(start_year: int = 2011, end_year: Optional[int] = None, checkpoint_key: str = "pitstops"):
+
     limit = 100
+    end_year = end_year if end_year is not None else datetime.now().year - 1
+    years = list(range(start_year, end_year + 1))
 
-    for year in range(2011, datetime.now().year):
+    checkpoint = _load_checkpoint().get(checkpoint_key)
+    start_idx = 0
+    if checkpoint and checkpoint["year"] in years:
+        start_idx = years.index(checkpoint["year"]) + 1
+        print(f"[{checkpoint_key}] Resuming pit stop ingest after {checkpoint['year']}")
+
+    for i in range(start_idx, len(years)):
+        year = years[i]
+        pitstop_entries = []
         response = _get_with_retry(f"{BASE_URL}/{year}/races.json")
         total_round = int(response.json()["MRData"]["total"])
 
@@ -519,47 +628,59 @@ def fetch_pitstop_data() -> list[PitStopModel]:
                 if offset >= int(data["total"]):
                     break
 
-    return pitstop_entries
+        yield year, pitstop_entries
+
+        # only checkpointed once the caller has finished processing this
+        # year (inserted it) — same reasoning as fetch_lap_data
+        _save_checkpoint(checkpoint_key, {"year": year})
 
 
-def fetch_all_standings() -> tuple[list[TeamChampionshipModel], list[DriverChampionshipModel]]:
+def fetch_all_standings(
+    start_year: int = 2011, end_year: Optional[int] = None
+) -> tuple[list[TeamChampionshipModel], list[DriverChampionshipModel]]:
     """
     Fetches constructor and driver standings in a single loop per year so that
     /races.json is only called once per season and total API requests are halved.
+
+    start_year/end_year scope the run to a slice of seasons (inclusive) —
+    same convention as fetch_lap_data/fetch_pitstop_data — so a refresh of
+    just the current season doesn't have to re-walk every prior round.
+    Defaults reproduce the original full-history behavior.
     """
+    end_year = end_year if end_year is not None else datetime.now().year
     constructor_standings = []
     driver_standings = []
 
-    for year in range(2011, datetime.now().year + 1):
+    for year in range(start_year, end_year + 1):
         # One races.json call per year — shared by both standings fetches
         races_resp = _get_with_retry(f"{BASE_URL}/{year}/races.json")
         raw_total = races_resp.json()["MRData"].get("total")
         total_rounds = int(raw_total) if raw_total else 0
 
         for round_num in range(1, total_rounds + 1):
-            # ── Constructor standings 
-            # c_resp = _get_with_retry(
-            #     f"{BASE_URL}/{year}/{round_num}/constructorstandings.json",
-            #     params={"limit": 100},
-            # )
-            # c_standings_list = c_resp.json()["MRData"]["StandingsTable"]["StandingsLists"]
+            # ── Constructor standings
+            c_resp = _get_with_retry(
+                f"{BASE_URL}/{year}/{round_num}/constructorstandings.json",
+                params={"limit": 100},
+            )
+            c_standings_list = c_resp.json()["MRData"]["StandingsTable"]["StandingsLists"]
 
-            # if c_standings_list:
-            #     for entry in c_standings_list[0]["ConstructorStandings"]:
-            #         constructor_standings.append(
-            #             TeamChampionshipModel(
-            #                 team_api_id=entry["Constructor"]["constructorId"],
-            #                 season_api_id=str(year),
-            #                 round_api_id=f"{year}_{round_num}",
-            #                 year=year,
-            #                 round_number=round_num,
-            #                 position=int(entry["position"]) if entry.get("position") else None,
-            #                 points=float(entry["points"]) if entry.get("points") else 0.0,
-            #                 win_count=int(entry["wins"]) if entry.get("wins") else 0,
-            #             )
-            #         )
+            if c_standings_list:
+                for entry in c_standings_list[0]["ConstructorStandings"]:
+                    constructor_standings.append(
+                        TeamChampionshipModel(
+                            team_api_id=entry["Constructor"]["constructorId"],
+                            season_api_id=str(year),
+                            round_api_id=f"{year}_{round_num}",
+                            year=year,
+                            round_number=round_num,
+                            position=int(entry["position"]) if entry.get("position") else None,
+                            points=float(entry["points"]) if entry.get("points") else 0.0,
+                            win_count=int(entry["wins"]) if entry.get("wins") else 0,
+                        )
+                    )
 
-            # ── Driver standings 
+            # ── Driver standings
             d_resp = _get_with_retry(
                 f"{BASE_URL}/{year}/{round_num}/driverstandings.json",
                 params={"limit": 100},
@@ -668,11 +789,11 @@ def ingest_rounds(conn, rounds: list[RoundModel]) -> None:
           conn.execute(
               """
               INSERT INTO bronze.round
-                  (season_id, circuit_id, api_id, number, name, date, is_cancelled)
+                  (season_id, circuit_id, api_id, number, name, date)
               VALUES (
                   (SELECT id FROM bronze.season WHERE api_id = %s),
                   (SELECT id FROM bronze.circuits WHERE api_id = %s),
-                  %s, %s, %s, %s, %s
+                  %s, %s, %s, %s
               )
               ON CONFLICT (api_id) DO NOTHING
               """,
@@ -776,7 +897,11 @@ def insert_constructor_championship(conn, constructor_standings: list[TeamChampi
                 (SELECT id FROM bronze.round  WHERE api_id = %s),
                 %s, %s, %s, %s, %s
             )
-            ON CONFLICT (api_id) DO NOTHING
+            ON CONFLICT (api_id) DO UPDATE SET
+                round_id = EXCLUDED.round_id,
+                position = EXCLUDED.position,
+                points = EXCLUDED.points,
+                win_count = EXCLUDED.win_count
             """,
             (
                 cs.api_id,
@@ -807,7 +932,11 @@ def insert_driver_championship(conn, driver_standings: list[DriverChampionshipMo
                 (SELECT id FROM bronze.round   WHERE api_id = %s),
                 %s, %s, %s, %s, %s
             )
-            ON CONFLICT (api_id) DO NOTHING
+            ON CONFLICT (api_id) DO UPDATE SET
+                round_id = EXCLUDED.round_id,
+                position = EXCLUDED.position,
+                points = EXCLUDED.points,
+                win_count = EXCLUDED.win_count
             """,
             (
                 ds.api_id,

@@ -7,15 +7,13 @@ import { Rewind } from "lucide-react";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { useSeasonRounds } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
-import { focusRound } from "@/features/dashboard/selectors";
+import { completedRounds, focusRound } from "@/features/dashboard/selectors";
 import { shortRoundName } from "@/lib/format";
 
 export function RaceReplayPromo(props: { className?: string }) {
   const { filters } = useFilters();
   const query = useSeasonRounds(filters.year);
-  const rounds = (query.data?.items ?? [])
-    .filter((r) => r.number != null)
-    .map((r) => ({ number: r.number as number, name: r.name }));
+  const rounds = completedRounds(query.data?.items);
   const round = focusRound(rounds, filters);
   const roundName = rounds.find((r) => r.number === round)?.name;
 

@@ -1,7 +1,7 @@
 /** Pure selectors that turn reusable API datasets into widget-ready slices.
  *  Keeping these out of components lets several widgets share one query. */
 import type { DashboardFilters } from "@/state/filters";
-import type { ChampionshipPoint, SessionResult } from "@/lib/types";
+import type { ChampionshipPoint, Round, SessionResult } from "@/lib/types";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import type { RoundOption } from "@/features/dashboard/FilterBar";
 
@@ -12,6 +12,19 @@ export function roundsFromResults(rows: SessionResult[] | undefined): RoundOptio
     if (r.round_number != null && !seen.has(r.round_number)) seen.set(r.round_number, r.round_name);
   }
   return [...seen.entries()].sort((a, b) => a[0] - b[0]).map(([number, name]) => ({ number, name }));
+}
+
+/** Scheduled rounds that have actually taken place — drops cancelled rounds and
+ *  any race still in the future (by date), so a mid-season year (e.g. 2026)
+ *  defaults its focus round to the latest completed round instead of an empty
+ *  future calendar slot. A complete past season is unaffected (every round is
+ *  in the past). Same today/date convention as the Calendar page. */
+export function completedRounds(items: Round[] | undefined): RoundOption[] {
+  const today = new Date().toISOString().slice(0, 10);
+  return (items ?? [])
+    .filter((r) => r.number != null && !r.is_cancelled && !(r.date != null && r.date >= today))
+    .sort((a, b) => (a.number as number) - (b.number as number))
+    .map((r) => ({ number: r.number as number, name: r.name }));
 }
 
 /** The round session-level widgets focus on: explicit selection or latest. */

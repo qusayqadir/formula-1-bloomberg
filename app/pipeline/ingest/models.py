@@ -133,7 +133,7 @@ class LapModel(BaseModel):
             seconds = float(sec_str)
             return (minutes * 60 )  + seconds
         except (ValueError, IndexError):
-            raise ValueError("ivalid expected laptime value")
+            return None
 
     @computed_field 
     def api_id(self) ->str: 
@@ -158,7 +158,7 @@ class PitStopModel(BaseModel):
         try:
             return float(self.duration)
         except ValueError:
-            raise ValueError("invalid expected pitstop duration value")
+            return None
 
 
     @computed_field

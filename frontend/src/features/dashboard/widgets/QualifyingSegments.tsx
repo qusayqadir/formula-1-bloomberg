@@ -2,15 +2,17 @@
  *  qualifying position exists in the source data (no per-segment position),
  *  so elimination is inferred from a driver having no time in the next
  *  segment — lines simply stop there instead of carrying a fabricated value. */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type * as echarts from "echarts";
 import type { EChartsOption, LineSeriesOption } from "echarts";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { EChart } from "@/components/charts/EChart";
 import { MONO, useChartTheme } from "@/components/charts/theme";
+import { useNearestLineHover } from "@/components/charts/useNearestLineHover";
 import { withAlpha } from "@/lib/colors";
 import { useQualifyingSegments, useSeasonRounds } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
-import { focusRound } from "@/features/dashboard/selectors";
+import { completedRounds, focusRound } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { durationToSeconds, driverCode, sanitizeLapSeconds, shortRoundName } from "@/lib/format";
 
@@ -20,15 +22,11 @@ export function QualifyingSegments(props: { entities: SeasonEntities; className?
   const { filters } = useFilters();
   const C = useChartTheme();
   const { t, axisLabel, baseTooltip } = C;
+  const [chart, setChart] = useState<echarts.ECharts | null>(null);
+  useNearestLineHover(chart);
 
   const roundsQuery = useSeasonRounds(filters.year);
-  const rounds = useMemo(
-    () =>
-      (roundsQuery.data?.items ?? [])
-        .filter((r) => r.number != null)
-        .map((r) => ({ number: r.number as number, name: r.name })),
-    [roundsQuery.data],
-  );
+  const rounds = useMemo(() => completedRounds(roundsQuery.data?.items), [roundsQuery.data]);
   const round = focusRound(rounds, filters);
   const roundName = rounds.find((r) => r.number === round)?.name;
 
@@ -142,7 +140,7 @@ export function QualifyingSegments(props: { entities: SeasonEntities; className?
       className={props.className}
       bodyClassName="p-2"
     >
-      {option && <EChart option={option} />}
+      {option && <EChart option={option} onChartReady={setChart} />}
     </AnalyticsCard>
   );
 }

@@ -36,7 +36,7 @@ import {
 import { useChartTheme } from "@/components/charts/theme";
 import { usePitStops, useSeasonRounds } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
-import { focusRound, visibleDriverIds } from "@/features/dashboard/selectors";
+import { completedRounds, focusRound, visibleDriverIds } from "@/features/dashboard/selectors";
 import { driverCode, shortRoundName } from "@/lib/format";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 
@@ -58,13 +58,7 @@ export function TireStints(props: { entities: SeasonEntities; className?: string
   const { filters } = useFilters();
   const { t } = useChartTheme();
   const roundsQuery = useSeasonRounds(filters.year);
-  const rounds = useMemo(
-    () =>
-      (roundsQuery.data?.items ?? [])
-        .filter((r) => r.number != null)
-        .map((r) => ({ number: r.number as number, name: r.name })),
-    [roundsQuery.data],
-  );
+  const rounds = useMemo(() => completedRounds(roundsQuery.data?.items), [roundsQuery.data]);
   const round = focusRound(rounds, filters);
   const roundName = rounds.find((r) => r.number === round)?.name;
 

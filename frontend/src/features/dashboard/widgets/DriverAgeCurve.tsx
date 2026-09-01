@@ -1,5 +1,5 @@
-/** Performance vs. age at time of race — career-wide (2011–2025), independent
- *  of the season filter. A bold field-average line (starts-weighted) sits
+/** Performance vs. age at time of race — career-wide (2011 → latest season),
+ *  independent of the season filter. A bold field-average line (starts-weighted) sits
  *  behind individual driver curves so a driver's arc reads against the
  *  typical career trajectory, not in isolation. */
 import { useMemo } from "react";
@@ -16,7 +16,7 @@ import type { SeasonEntities } from "@/features/dashboard/entities";
 const TOP_N = 6;
 
 export function DriverAgeCurve(props: { entities: SeasonEntities; className?: string }) {
-  const { filters } = useFilters();
+  const { filters, latestYear } = useFilters();
   const C = useChartTheme();
   const { t, baseGrid, baseTooltip, valueAxis } = C;
   const query = useDriverAgeCurve();
@@ -130,7 +130,7 @@ export function DriverAgeCurve(props: { entities: SeasonEntities; className?: st
     <AnalyticsCard
       eyebrow="Drivers · Career"
       title="Age / experience curve"
-      subtitle="2011–2025 · performance vs. age at time of race · dashed = field average"
+      subtitle={`2011–${latestYear} · performance vs. age at time of race · dashed = field average`}
       loading={query.isPending}
       refreshing={query.isFetching && !query.isPending}
       error={query.error as Error | null}

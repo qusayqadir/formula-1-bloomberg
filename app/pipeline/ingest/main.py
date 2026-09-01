@@ -1,3 +1,5 @@
+import argparse
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -32,75 +34,100 @@ from app.pipeline.ingest.ingest_tables import (
 from app.pipeline.ingest.derive_tables import expand_sessions, ingest_sessions
 from app.pipeline.ingest.circuit_metadata import load_circuit_metadata, upsert_circuit_metadata
 
-def fetch_and_fill_schema():
+def fetch_and_fill_schema(stage: str = "all", start_year: int = 2011, end_year: int | None = None):
+
+    is_scoped = stage != "all" or start_year != 2011 or end_year is not None
+    range_suffix = f"_{start_year}_{end_year if end_year is not None else 'latest'}" if is_scoped else ""
+
     with get_connection() as conn:
 
-        # drivers = fetch_drivers()
-        # insert_drivers(conn, drivers)
-        # print(f"Inserted {len(drivers)} Drivers")
+        if stage in ("metadata", "all"):
+            drivers = fetch_drivers()
+            insert_drivers(conn, drivers)
+            print(f"Inserted {len(drivers)} Drivers")
 
-        # circuits = fetch_circuits()
-        # insert_circuits(conn, circuits)
-        # print(f"Inserted {len(circuits)} Circuits")
+            circuits = fetch_circuits()
+            insert_circuits(conn, circuits)
+            print(f"Inserted {len(circuits)} Circuits")
 
-        # seasons = fetch_seasons()
-        # insert_seasons(conn, seasons)
-        # print(f"Inserted {len(seasons)} Seasons")
+            seasons = fetch_seasons()
+            insert_seasons(conn, seasons)
+            print(f"Inserted {len(seasons)} Seasons")
 
-        # constructors = fetch_constructors()
-        # ingest_constructor(conn, constructors)
-        # print(f"Ingested {len(constructors)} constructors/teams")
+            constructors = fetch_constructors()
+            ingest_constructor(conn, constructors)
+            print(f"Ingested {len(constructors)} constructors/teams")
 
-        # rounds = fetch_rounds()
-        # ingest_rounds(conn, rounds)
-        # print(f"Ingestd {len(rounds)} Rounds")
+            rounds = fetch_rounds()
+            ingest_rounds(conn, rounds)
+            print(f"Ingestd {len(rounds)} Rounds")
 
-        # sessions = expand_sessions(rounds)   # no API call
-        # ingest_sessions(conn, sessions)
-        # print(f"Ingest {len(sessions)} Session")
+            sessions = expand_sessions(rounds)   # no API call
+            ingest_sessions(conn, sessions)
+            print(f"Ingest {len(sessions)} Session")
 
-        # team_drivers, round_entries, session_entries = fetch_race_results()
-        # insert_team_drivers(conn, team_drivers)
-        # print(f"Inserted {len(team_drivers)} Team Drivers")
+            team_drivers, round_entries, session_entries = fetch_race_results()
+            insert_team_drivers(conn, team_drivers)
+            print(f"Inserted {len(team_drivers)} Team Drivers")
 
-        # insert_round_entries(conn, round_entries)
-        # print(f"Inserted {len(round_entries)} Round Entries")
+            insert_round_entries(conn, round_entries)
+            print(f"Inserted {len(round_entries)} Round Entries")
 
-        # insert_session_entries(conn, session_entries)
-        # print(f"Inserted {len(session_entries)} Session Entries")
+            insert_session_entries(conn, session_entries)
+            print(f"Inserted {len(session_entries)} Session Entries")
 
-        # quali_team_drivers, quali_round_entries, quali_session_entries = fetch_quali_results()
-        # insert_team_drivers(conn, quali_team_drivers)
-        # insert_round_entries(conn, quali_round_entries)
-        # insert_session_entries(conn, quali_session_entries)
-        # print(f"Inserted {len(quali_session_entries)} Qualifying Session Entries")
+            quali_team_drivers, quali_round_entries, quali_session_entries = fetch_quali_results()
+            insert_team_drivers(conn, quali_team_drivers)
+            insert_round_entries(conn, quali_round_entries)
+            insert_session_entries(conn, quali_session_entries)
+            print(f"Inserted {len(quali_session_entries)} Qualifying Session Entries")
 
-        # sprint_team_drivers, sprint_round_entries, sprint_session_entries = fetch_sprint_results()
-        # insert_team_drivers(conn, sprint_team_drivers)
-        # insert_round_entries(conn, sprint_round_entries)
-        # insert_session_entries(conn, sprint_session_entries)
-        # print(f"Inserted {len(sprint_session_entries)} Sprint Session Entries")
+            sprint_team_drivers, sprint_round_entries, sprint_session_entries = fetch_sprint_results()
+            insert_team_drivers(conn, sprint_team_drivers)
+            insert_round_entries(conn, sprint_round_entries)
+            insert_session_entries(conn, sprint_session_entries)
+            print(f"Inserted {len(sprint_session_entries)} Sprint Session Entries")
 
-        # constructor_standings, driver_standings = fetch_all_standings()
-        # insert_constructor_championship(conn, constructor_standings)
-        # print(f"Inserted {len(constructor_standings)} Constructor Standings Entries")
-        # insert_driver_championship(conn, driver_standings)
-        # print(f"Inserted {len(driver_standings)} Driver Standings Entries")
+            constructor_standings, driver_standings = fetch_all_standings(
+                start_year=start_year, end_year=end_year
+            )
+            insert_constructor_championship(conn, constructor_standings)
+            print(f"Inserted {len(constructor_standings)} Constructor Standings Entries")
+            insert_driver_championship(conn, driver_standings)
+            print(f"Inserted {len(driver_standings)} Driver Standings Entries")
 
-        for year, lap_entries in fetch_lap_data():
-            insert_laps(conn, lap_entries)
-            print(f"Inserted {len(lap_entries)} Lap Entries for {year}")
+        if stage in ("laps", "all"):
+            for year, round_number, lap_entries in fetch_lap_data(
+                start_year=start_year, end_year=end_year, checkpoint_key=f"laps{range_suffix}"
+            ):
+                insert_laps(conn, lap_entries)
+                print(f"Inserted {len(lap_entries)} Lap Entries for {year} Round {round_number}")
 
-        pitstop_entries = fetch_pitstop_data()
-        insert_pitstop(conn, pitstop_entries)
-        print(f"Inserted {len(pitstop_entries)} Pit Stop Entries")
+        if stage in ("pitstops", "all"):
+            for year, pitstop_entries in fetch_pitstop_data(
+                start_year=start_year, end_year=end_year, checkpoint_key=f"pitstops{range_suffix}"
+            ):
+                insert_pitstop(conn, pitstop_entries)
+                print(f"Inserted {len(pitstop_entries)} Pit Stop Entries for {year}")
 
         # circuit_meta = load_circuit_metadata()
         # updated = upsert_circuit_metadata(conn, circuit_meta)
         # print(f"Updated circuit metadata on {updated} circuits")
 
-        
-
 
 if __name__ == "__main__":
-    fetch_and_fill_schema()
+    parser = argparse.ArgumentParser(
+        description="Historic F1 ingest. Run multiple copies in parallel with "
+        "non-overlapping --stage/--start-year/--end-year to speed up a backfill — "
+        "they share one rate limiter and checkpoint file, so this is safe."
+    )
+    parser.add_argument("--stage", choices=["laps", "pitstops", "metadata", "all"], default="all")
+    parser.add_argument("--start-year", type=int, default=2011)
+    parser.add_argument(
+        "--end-year", type=int, default=None,
+        help="Inclusive. For laps/pitstops, defaults to the last complete season "
+        "(pass explicitly, e.g. the current year, to include an in-progress season). "
+        "For metadata, scopes the standings refresh only; defaults to the current year.",
+    )
+    args = parser.parse_args()
+    fetch_and_fill_schema(stage=args.stage, start_year=args.start_year, end_year=args.end_year)

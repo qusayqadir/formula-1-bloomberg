@@ -1,6 +1,6 @@
-/** Grid → finish density, 2011–2025: a hex-binned field of every classified
- *  finish. Hex fill rides the validated sequential ramp on a √ scale (the
- *  pole→win cell would otherwise flatten everything); exact counts live in
+/** Grid → finish density, 2011 → latest season: a hex-binned field of every
+ *  classified finish. Hex fill rides the validated sequential ramp on a √ scale
+ *  (the pole→win cell would otherwise flatten everything); exact counts live in
  *  the tooltip. The dashed diagonal is "finished where you started" —
  *  above it (P1 is top) means places gained. */
 import { useMemo } from "react";
@@ -10,14 +10,15 @@ import { EChart } from "@/components/charts/EChart";
 import { MONO, useChartTheme } from "@/components/charts/theme";
 import { seqColor } from "@/lib/colors";
 import { useGridFinishDensity } from "@/lib/queries";
+import { useFilters } from "@/state/filters";
 
 const YEAR_FROM = 2011;
-const YEAR_TO = 2025;
 
 export function GridFinishHexbin(props: { className?: string }) {
   const C = useChartTheme();
   const { t, axisLabel, baseTooltip, valueAxis } = C;
-  const query = useGridFinishDensity(YEAR_FROM, YEAR_TO);
+  const { latestYear } = useFilters();
+  const query = useGridFinishDensity(YEAR_FROM, latestYear);
 
   const built = useMemo(() => {
     const rows = query.data?.rows ?? [];
@@ -113,7 +114,7 @@ export function GridFinishHexbin(props: { className?: string }) {
     <AnalyticsCard
       eyebrow="Field · Start → Finish"
       title="Grid → finish density"
-      subtitle={`${YEAR_FROM}–${YEAR_TO} · classified finishes · above diagonal = gained`}
+      subtitle={`${YEAR_FROM}–${latestYear} · classified finishes · above diagonal = gained`}
       loading={query.isPending}
       refreshing={query.isFetching && !query.isPending}
       error={query.error as Error | null}

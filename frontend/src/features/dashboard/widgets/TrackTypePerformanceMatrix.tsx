@@ -2,13 +2,14 @@
  *  vs. the entity's own career average, one row per driver/team. Diverging
  *  shading (blue = over-indexes, red = under-indexes) since 0 is a real
  *  baseline here, not an empty cell. Same sticky-table language as the
- *  circuit × driver matrix. 2011–2025, independent of the season filter. */
+ *  circuit × driver matrix. 2011 → latest season, independent of the season filter. */
 import { useMemo, useState } from "react";
 import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { Segmented } from "@/components/ui/controls";
 import { useChartTheme } from "@/components/charts/theme";
 import { mixHex } from "@/lib/colors";
 import { useTrackTypeIndex } from "@/lib/queries";
+import { useFilters } from "@/state/filters";
 import { driverCode, formatNumber } from "@/lib/format";
 
 type Entity = "driver" | "team";
@@ -16,6 +17,7 @@ type Entity = "driver" | "team";
 export function TrackTypePerformanceMatrix(props: { className?: string }) {
   const C = useChartTheme();
   const { t } = C;
+  const { latestYear } = useFilters();
   const [entity, setEntity] = useState<Entity>("driver");
   const query = useTrackTypeIndex(entity);
 
@@ -46,7 +48,7 @@ export function TrackTypePerformanceMatrix(props: { className?: string }) {
     <AnalyticsCard
       eyebrow="Track Type · Over-index"
       title="Track-type performance matrix"
-      subtitle="2011–2025 · pts/start vs. own career average · min 3 starts per cell"
+      subtitle={`2011–${latestYear} · pts/start vs. own career average · min 3 starts per cell`}
       controls={
         <Segmented
           ariaLabel="Matrix entity"

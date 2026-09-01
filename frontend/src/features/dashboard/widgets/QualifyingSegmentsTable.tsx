@@ -7,22 +7,64 @@ import { AnalyticsCard } from "@/components/ui/AnalyticsCard";
 import { useChartTheme } from "@/components/charts/theme";
 import { useQualifyingSegments, useSeasonRounds } from "@/lib/queries";
 import { useFilters } from "@/state/filters";
-import { focusRound, visibleDriverIds } from "@/features/dashboard/selectors";
+import { completedRounds, focusRound, visibleDriverIds } from "@/features/dashboard/selectors";
 import type { SeasonEntities } from "@/features/dashboard/entities";
 import { driverCode, durationToSeconds, formatGap, formatLapTime, sanitizeLapSeconds, shortRoundName } from "@/lib/format";
+
+/** Best-in-segment time, driven by the same source data every other segment
+ *  tooltip reads — kept alongside the pole time since neither is exposed by
+ *  the API directly (only final position is). */
+function bestOf(values: (number | null)[]): number | null {
+  const valid = values.filter((v): v is number => v != null);
+  return valid.length ? Math.min(...valid) : null;
+}
+
+/** Q1/Q2/Q3 cell content + hover detail — same frosted-glass card language as
+ *  every ECharts tooltip (see useChartTheme's tip/tipRow), reimplemented in
+ *  plain DOM since this is a native <table>, not a chart. Adds the one thing
+ *  the table's columns don't already show: gap to that segment's fastest,
+ *  not just the final gap-to-pole in the last column. */
+function SegmentCell(props: {
+  time: number | null;
+  best: number | null;
+  label: string;
+  code: string;
+  team: string;
+  swatch: string;
+}) {
+  const gap = props.time != null && props.best != null ? props.time - props.best : null;
+  return (
+    <span className="group relative inline-block">
+      {formatLapTime(props.time)}
+      {props.time != null && (
+        <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-ink/20 bg-raised/75 px-2 py-1.5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.1)] backdrop-blur-sm group-hover:block">
+          <div className="mb-0.5 font-mono text-[10px] text-sub">
+            {props.code} — {props.team}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-ink">
+              <span className="h-2 w-2 flex-none rounded-[1px]" style={{ background: props.swatch }} aria-hidden />
+              <span className="text-sub">{props.label}</span>
+              <span className="ml-auto pl-2 text-ink">{formatLapTime(props.time)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-ink">
+              <span className="h-2 w-2 flex-none" aria-hidden />
+              <span className="text-sub">GAP TO FASTEST</span>
+              <span className="ml-auto pl-2 text-ink">{formatGap(gap)}</span>
+            </div>
+          </div>
+        </span>
+      )}
+    </span>
+  );
+}
 
 export function QualifyingSegmentsTable(props: { entities: SeasonEntities; className?: string }) {
   const { filters, toggleDriver } = useFilters();
   const { t } = useChartTheme();
 
   const roundsQuery = useSeasonRounds(filters.year);
-  const rounds = useMemo(
-    () =>
-      (roundsQuery.data?.items ?? [])
-        .filter((r) => r.number != null)
-        .map((r) => ({ number: r.number as number, name: r.name })),
-    [roundsQuery.data],
-  );
+  const rounds = useMemo(() => completedRounds(roundsQuery.data?.items), [roundsQuery.data]);
   const round = focusRound(rounds, filters);
   const roundName = rounds.find((r) => r.number === round)?.name;
 
@@ -40,7 +82,10 @@ export function QualifyingSegmentsTable(props: { entities: SeasonEntities; class
       })
       .sort((a, b) => (a.final_position ?? 99) - (b.final_position ?? 99));
     const pole = built.find((r) => r.final_position === 1)?.finalTime ?? built[0]?.finalTime ?? null;
-    return { built, pole };
+    const q1Best = bestOf(built.map((r) => r.q1));
+    const q2Best = bestOf(built.map((r) => r.q2));
+    const q3Best = bestOf(built.map((r) => r.q3));
+    return { built, pole, q1Best, q2Best, q3Best };
   }, [query.data, filters, props.entities]);
 
   return (
@@ -97,9 +142,36 @@ export function QualifyingSegmentsTable(props: { entities: SeasonEntities; class
                   <span className="font-sans font-medium text-ink">{driver?.code ?? driverCode(r.driver)}</span>
                 </td>
                 <td className="max-w-32 truncate whitespace-nowrap px-3 py-2 font-sans text-sub">{r.team.name}</td>
-                <td className="px-3 py-2 text-right text-sub">{formatLapTime(r.q1)}</td>
-                <td className="px-3 py-2 text-right text-sub">{formatLapTime(r.q2)}</td>
-                <td className="px-3 py-2 text-right text-sub">{formatLapTime(r.q3)}</td>
+                <td className="px-3 py-2 text-right text-sub">
+                  <SegmentCell
+                    time={r.q1}
+                    best={rows.q1Best}
+                    label="Q1"
+                    code={driver?.code ?? driverCode(r.driver)}
+                    team={r.team.name}
+                    swatch={driver?.color ?? t.neutral}
+                  />
+                </td>
+                <td className="px-3 py-2 text-right text-sub">
+                  <SegmentCell
+                    time={r.q2}
+                    best={rows.q2Best}
+                    label="Q2"
+                    code={driver?.code ?? driverCode(r.driver)}
+                    team={r.team.name}
+                    swatch={driver?.color ?? t.neutral}
+                  />
+                </td>
+                <td className="px-3 py-2 text-right text-sub">
+                  <SegmentCell
+                    time={r.q3}
+                    best={rows.q3Best}
+                    label="Q3"
+                    code={driver?.code ?? driverCode(r.driver)}
+                    team={r.team.name}
+                    swatch={driver?.color ?? t.neutral}
+                  />
+                </td>
                 <td className={`px-3 py-2 text-right ${r.final_position === 1 ? "text-accent" : "text-sub"}`}>
                   {gap != null ? formatGap(gap) : "—"}
                 </td>

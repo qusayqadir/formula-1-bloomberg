@@ -291,7 +291,7 @@ export function ChatPage() {
             <div className="flex flex-col items-center pt-16 text-center">
               <p className="eyebrow">Ask the database</p>
               <h2 className="mt-2 max-w-md text-xl font-semibold tracking-tight text-ink">
-                Every classification, standing and circuit from 2011 to 2025.
+                Every classification, standing and circuit from 2011 to 2026.
               </h2>
               <p className="mt-2 max-w-sm text-xs leading-relaxed text-sub">
                 Answers will be grounded in the ingested results database once the chat

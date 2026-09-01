@@ -20,6 +20,10 @@ export interface DashboardFilters {
 interface FiltersApi {
   filters: DashboardFilters;
   years: number[];
+  /** Newest season we hold data for (max of `years`). Career-wide widgets use
+   *  this as their upper bound so a freshly-ingested season is included without
+   *  hunting down hardcoded year constants. */
+  latestYear: number;
   set: (patch: Partial<DashboardFilters>) => void;
   toggleDriver: (id: number) => void;
   toggleTeam: (id: number) => void;
@@ -27,7 +31,7 @@ interface FiltersApi {
   isDefault: boolean;
 }
 
-const FALLBACK_YEAR = 2025;
+const FALLBACK_YEAR = 2026;
 const FiltersContext = createContext<FiltersApi | null>(null);
 
 function parseIds(value: string | null): number[] {
@@ -138,8 +142,8 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
   }, [set]);
 
   const value = useMemo(
-    () => ({ filters, years, set, toggleDriver, toggleTeam, reset, isDefault }),
-    [filters, years, set, toggleDriver, toggleTeam, reset, isDefault],
+    () => ({ filters, years, latestYear, set, toggleDriver, toggleTeam, reset, isDefault }),
+    [filters, years, latestYear, set, toggleDriver, toggleTeam, reset, isDefault],
   );
   return <FiltersContext.Provider value={value}>{children}</FiltersContext.Provider>;
 }
