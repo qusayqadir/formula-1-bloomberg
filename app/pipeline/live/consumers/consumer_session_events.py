@@ -42,4 +42,4 @@ async def consumer():
         
 
 def handler(events, messages):
-    asyncio.run(consumer(conn))
+    asyncio.run(consumer())

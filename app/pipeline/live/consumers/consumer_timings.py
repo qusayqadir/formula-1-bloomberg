@@ -31,7 +31,7 @@ async def consumer():
 
             await sqs.delete_message(
                 QueueUrl=TIMINGS_SQS,
-                ReceiptHandle= 
+                # ReceiptHandle= 
             )
                 
 
