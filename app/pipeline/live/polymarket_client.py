@@ -221,19 +221,3 @@ def combine_event_data(events: list[dict], price_chart: dict) -> list[dict]:
         })
 
     return combined
-
-
-def main():
-    event_limit = 20
-
-    events = find_top_events(event_limit=event_limit)
-    if len(events) < event_limit:
-        events += find_recently_closed_events(limit=event_limit - len(events))
-
-    events_with_markets = top_markets_per_event(events, markets_per_event=4)
-    price_chart = fetch_price_histories(events_with_markets)
-    return combine_event_data(events_with_markets, price_chart)
-
-
-if __name__ == "__main__":
-    print(json.dumps(main(), indent=2))

@@ -26,8 +26,6 @@
     - [ ] eventbridge? have an agent manually right all the triggers for the 
   - [ ] incremental poller, checkpointing, logging, reconciliation if upstream data corrects itself later
 
-Work on team profiles
-
 - [ ] **live dashboard** 
   - [ ] respond to openf1 to gain access and confirm api access keys
   - [ ] config kineses, and lamda pollers and publisher 
