@@ -2,11 +2,14 @@ import asyncio
 from aiobotocore.session import get_session
 import json 
 import websockets
+import os 
 from dotenv import load_dotenv
 
-SESSION_SQS=""
-TELEMETRY_SQS=""
-TIMINGS_SQS=""
+load_dotenv()
+
+SESSION_SQS=os.environ["sessoin_sqs_url"]
+TELEMETRY_SQS=os.environ["telemetry_sqs_url"]
+TIMINGS_SQS=os.environ["timings_sqs_url"]
 
 consumer_sqs = { 
     "session_events" : SESSION_SQS, 
@@ -18,8 +21,8 @@ async def producer(source_uri: str, topic: str, buffer: asyncio.Queue):
     async with websockets.connect(source_uri) as websocket:
         async for response in websocket: 
             message = json.load(response)
-            message["topic"] = topic
-            
+            message["topic"] = topic 
+                        
             await buffer.put(json.dumps(message))
             
 
@@ -39,14 +42,14 @@ async def main():
     session = get_session() 
     async with session.create_client("sqs", regoin_name="us-east-1") as sqs: 
         asyncio.gather(
-            producer( LIVE_STINT_URI, "sessoin_events", buffer), 
-            producer( LIVE_PIT_URI, "sessoin_events", buffer), 
-            producer( LIVE_LOCATION_URI, "sessoin_events", buffer), 
-            producer( LIVE_POSITION_URI, "sessoin_events", buffer), 
-            producer( LIVE_RACE_CONTROL_URI, "sessoin_events", buffer), 
-            producer( LIVE_OVERTAKE_URI, "sessoin_events", buffer), 
-            producer( LIVE_OVERTAKE_URI, "sessoin_events", buffer), 
-            producer( LIVE_WEATHER_URI, "sessoin_events", buffer), 
+            producer( LIVE_STINT_URI, "session_events", buffer), 
+            producer( LIVE_PIT_URI, "session_events", buffer), 
+            producer( LIVE_LOCATION_URI, "session_events", buffer), 
+            producer( LIVE_POSITION_URI, "session_events", buffer), 
+            producer( LIVE_RACE_CONTROL_URI, "session_events", buffer), 
+            producer( LIVE_OVERTAKE_URI, "session_events", buffer), 
+            producer( LIVE_OVERTAKE_URI, "session_events", buffer), 
+            producer( LIVE_WEATHER_URI, "session_events", buffer), 
 
             # all the cars? or just the driver i want to see? 
             producer( LIVE_CAR_DATA_URI, "telemetry", buffer), 
