@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import ssl
@@ -6,8 +7,11 @@ import ssl
 import aiomqtt
 #async http endpoints
 import httpx
+import psycopg
 from aiobotocore.session import get_session
 from dotenv import load_dotenv
+
+from core.database import get_connection
 
 load_dotenv()
 
@@ -25,6 +29,9 @@ BUCKET_SQS = {
     "timings": TIMINGS_SQS,
 }
 
+# car data? 270 ms per driver, do i need all the telemetry? 
+# how do i change websocket subscription based off the filters of hte frontend? 
+
 TOPIC_BUCKET: dict[str, str] = {
     "v1/laps": "timings",
     "v1/intervals": "timings",
@@ -40,6 +47,57 @@ TOPIC_BUCKET: dict[str, str] = {
     "v1/weather": "session_events",
     "v1/sessions": "session_events",
 }
+
+
+# car_data is the firehose (~74 msg/s for 20 cars); we only forward it for the drivers
+# the user has focused, read from bronze.live_focus_selection. location stays full (all cars,
+# for the track map). Empty/absent selection for a session -> no car_data forwarded.
+FOCUS_REFRESH_SECONDS = 10
+focus: dict[int, set[int]] = {}  # session_key -> {driver_number, ...}
+
+_focus_conn: "psycopg.Connection | None" = None
+
+
+def _get_focus_conn() -> psycopg.Connection:
+    global _focus_conn
+    if _focus_conn is None or _focus_conn.closed:
+        _focus_conn = get_connection()
+    return _focus_conn
+
+
+def _reset_focus_conn() -> None:
+    global _focus_conn
+    if _focus_conn is not None and not _focus_conn.closed:
+        try:
+            _focus_conn.close()
+        except Exception:
+            pass
+    _focus_conn = None
+
+
+def _load_focus() -> dict[int, set[int]]:
+    """Sync Postgres read of the current focus selection (runs off the event loop)."""
+    try:
+        conn = _get_focus_conn()
+        rows = conn.execute(
+            "SELECT session_key, driver_numbers FROM bronze.live_focus_selection"
+        ).fetchall()
+        conn.rollback()  # end the read txn without holding it open
+        return {row["session_key"]: set(row["driver_numbers"] or ()) for row in rows}
+    except Exception:
+        _reset_focus_conn()
+        raise
+
+
+async def focus_refresher() -> None:
+    """Refresh the in-memory focus map from bronze.live_focus_selection every ~10s."""
+    global focus
+    while True:
+        try:
+            focus = await asyncio.to_thread(_load_focus)
+        except Exception:
+            logger.exception("focus refresh failed; keeping previous selection")
+        await asyncio.sleep(FOCUS_REFRESH_SECONDS)
 
 
 openf1_token_username = os.environ["openf1_username"]
@@ -81,12 +139,25 @@ async def producer(buffer: asyncio.Queue) -> None:
                 backoff = 1  
                 
                 async for message in client.messages:
-                    
-                    queue = TOPIC_BUCKET.get(str(message.topic))
+
+                    topic = str(message.topic)
+                    queue = TOPIC_BUCKET.get(topic)
                     if queue is None:
                         continue
-                    #raw bytes that come from the websocket 
+                    #raw bytes that come from the websocket
                     payload = message.payload.decode()
+
+                    # car_data is the firehose: only forward focused drivers. Everything
+                    # else (incl. v1/location for the full track map) passes through.
+                    if topic == "v1/car_data":
+                        try:
+                            body = json.loads(payload)
+                            if body["driver_number"] not in focus.get(body["session_key"], set()):
+                                continue
+                        except (json.JSONDecodeError, KeyError):
+                            logger.warning("dropping malformed car_data payload")
+                            continue
+
                     await buffer.put((queue, payload))
                     
         except aiomqtt.MqttError as exc:
@@ -112,6 +183,7 @@ async def main() -> None:
     session = get_session()
     async with session.create_client("sqs", region_name="us-east-1") as sqs:
         await asyncio.gather(
+            focus_refresher(),
             producer(buffer),
             dispatcher(buffer, sqs),
         )

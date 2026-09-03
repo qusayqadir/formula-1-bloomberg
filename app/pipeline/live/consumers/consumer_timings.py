@@ -34,10 +34,9 @@ def _reset_conn() -> None:
             pass
     _conn = None
 
-
+# get the +1 data, if getting lapped display to user 
 def _num(value):
-    """OpenF1 sends gap_to_leader / interval as strings like "+1 LAP" for lapped cars,
-    which don't fit NUMERIC. Coerce to float, or None when it isn't a plain number."""
+    
     if value is None:
         return None
     try:
