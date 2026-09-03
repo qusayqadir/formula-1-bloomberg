@@ -23,7 +23,7 @@ async def consumer():
     async with session.get_client("sqs", region_name="us-east-1") as sqs: 
 
         while True: 
-            response = await sqs.recieve_messages(
+            response = await sqs.receive_message(
                 QueueUrl = TELEMETRY_SQS, 
                 MaxNumberOfMessages=10, 
                 WaitTimeSeconds=20, 

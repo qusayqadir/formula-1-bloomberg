@@ -30,6 +30,9 @@ python-dotenv>=1.0
 aiobotocore==3.9.0
 boto3==1.43.46
 
+# realtime (OpenF1 MQTT producer — stream_worker)
+aiomqtt>=2.0
+
 
 # Tests
 pytest>=8.0

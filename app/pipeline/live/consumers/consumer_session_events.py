@@ -22,7 +22,7 @@ async def consumer():
     async with session.get_client("sqs", region_name="us-east-1") as sqs: 
 
         while True: 
-            response = await sqs.recieve_messages(
+            response = await sqs.receive_message(
                 QueueUrl = SESSION_SQS, 
                 MaxNumberOfMessages=10, 
                 WaitTimeSeconds=20, 
@@ -41,5 +41,4 @@ async def consumer():
 
         
 
-def handler(events, messages):
-    asyncio.run(consumer())
+def handler(event, context): 

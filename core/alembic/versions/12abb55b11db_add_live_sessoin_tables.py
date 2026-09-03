@@ -95,6 +95,8 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS bronze.live_lap (
             id                 BIGSERIAL PRIMARY KEY,
             session_key        INTEGER NOT NULL REFERENCES bronze.live_session(session_key) ON DELETE CASCADE,
+            _key               TEXT,
+            _id                BIGINT,
             meeting_key        INTEGER NOT NULL,
             driver_number      INTEGER NOT NULL,
             lap_number         SMALLINT NOT NULL,
