@@ -78,7 +78,8 @@ class AgentState(TypedDict, total=False):
     validate_sql_response_reason: str 
     validation_sql_count: int 
     data_visual_response: str 
-    # data_visual_output: ?? 
+    graph_of_choice: str 
+    chart_spec: dict 
 
 
     #Output

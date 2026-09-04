@@ -75,3 +75,4 @@ def build_terminal_chat():
 
 
 terminal_chat = build_terminal_chat()
+# terminal_chat.get_graph(xray=True).draw_mermaid_png()

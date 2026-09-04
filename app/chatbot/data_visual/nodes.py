@@ -4,7 +4,8 @@ from app.chatbot.state import AgentState
 from app.chatbot.data_visual.prompt import (
     VALIDATE_SQL_RESPONSE_PROMPT,
     REWRITE_SQL_QUERY_PROMPT,
-    GENERATE_SQL_QUERY_PROMPT
+    GENERATE_SQL_QUERY_PROMPT,
+    GENERATE_DATA_VISUALIZATION_PROMPT 
 )
 from app.chatbot.core.models import (
     answer_model, 
@@ -18,7 +19,8 @@ from langchain_core.messages import (
 from app.chatbot.data_visual.schemas import (
     GenerateResponse,
     ReWriteQuery,
-    ValidationResponse
+    ValidationResponse,
+    ChartSpec
 )
 
 from core.database import (
@@ -137,6 +139,7 @@ def generate_response(state: AgentState) -> AgentState:
     return {
         "generated_sql_query": agent_response.answer,
         "generated_sql_confidence": agent_response.confidence,
+        "graph_of_choice" : agent_response.graph_of_choice
     }
 
 def validate_response(state: AgentState) -> AgentState:
@@ -167,13 +170,13 @@ def validate_response(state: AgentState) -> AgentState:
 
 MAX_VALIDATION_ATTEMPTS = 2 
 
-def chosen_route(state: AgentState) -> Literal["respond", "rewrite_query"]:
+def chosen_route(state: AgentState) -> Literal["generate_data_visual", "rewrite_query", "respond"]:
 
     is_valid = state.get("validate_query_is_valid", False)
     confidence = state.get("validate_sql_response_confidence") or 0.0
 
     if is_valid and confidence >= 0.7:
-        return "respond"
+        return "generate_data_visual"
 
 
     if state.get("validation_count", 0) >= MAX_VALIDATION_ATTEMPTS:
@@ -219,12 +222,24 @@ def execute_query(state: AgentState) -> AgentState:
         "data_visual_response" : results
     }
 
+def generate_data_visual(state: AgentState) -> AgentState:
+    agent = answer_model.with_structured_output(ChartSpec)
+    
+    spec = agent.invoke([
+        SystemMessage(content=GENERATE_DATA_VISUALIZATION_PROMPT),
+        HumanMessage(content=f"Rows (JSON):\n{state['data_visual_response']}\n\nSuggested chart type: {state.get('graph_of_choice')}"),
+    ])
+    
+    return {
+        "chart_spec": spec.model_dump()
+    }
+
 ### pass on the data somewhere else? 
 def respond(state: AgentState) -> AgentState:
 
-    result = state["data_visual_response"]
+    data = state.get("data_visual_response", "")
 
-    if isinstance(result, str) and result.startswith("Error:"):
+    if isinstance(data, str) and data.startswith("Error:"):
         return {
             "final_answer": (
                 "I wasn't able to build a working query for that question after a few attempts. "
@@ -233,5 +248,5 @@ def respond(state: AgentState) -> AgentState:
         }
 
     return {
-        "final_answer": result
+        "final_answer": f"Data: {data} Chart Spec: {state.get('chart_spec')} ",
     }

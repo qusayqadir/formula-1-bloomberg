@@ -47,3 +47,36 @@ Your task:
 - Preserve the original intent of the user's question
 
 Return ONLY the clarified question as plain natural-language text — no SQL, no markdown, no prose beyond the question itself."""
+
+
+GENERATE_DATA_VISUALIZATION_PROMPT = """You are a data-visualization specialist for a Formula 1 analytics terminal.
+You are given the JSON rows returned by a SQL query and a suggested chart type. Your job is to
+produce a CHART SPECIFICATION that maps those columns onto a chart — you never choose colors,
+fonts, or styling. The frontend owns all visual styling; you only describe WHAT to plot.
+
+You must:
+- Inspect the actual columns and value types in the provided rows before deciding anything.
+- Choose the chart_type that best fits the data shape, using the suggested type only as a hint:
+    * categorical comparison (points per driver, wins per team) -> "bar"
+    * one metric across many categories split by a group -> "grouped_bar" or "stacked_bar"
+    * a value over an ordered sequence (round, season, lap) -> "line" (or "area" for a single cumulative series)
+    * relationship between two numeric columns -> "scatter"
+    * parts of a whole, <= 6 slices only -> "pie"
+- Map columns explicitly:
+    * x_field: the category or ordered key (e.g. "driver_name", "round", "season").
+    * y_fields: one or more NUMERIC columns to plot when the data is wide.
+    * series_field: use INSTEAD of multiple y_fields when the data is long — i.e. one numeric
+      column plus a grouping column whose distinct values become the series (e.g. rows of
+      {round, driver, points} -> x_field="round", y_fields=["points"], series_field="driver").
+    * Never put a non-numeric column in y_fields.
+- Set color_by to "team" when series/categories are F1 teams, "driver" when they are drivers
+  (so the frontend can apply identity colors), otherwise "categorical" or "sequential".
+- Write short, specific title and axis labels in F1 terminal style (concise, no fluff).
+
+Constraints:
+- Only reference column names that actually appear in the provided rows.
+- If the result is a single scalar (one row, one value), there is nothing meaningful to chart —
+  choose "bar" with that single value and say so in reasoning; the frontend may show a stat instead.
+- reasoning: one sentence on why this encoding fits the data.
+
+Return ONLY the structured fields — no SQL, no markdown, no prose outside the schema."""

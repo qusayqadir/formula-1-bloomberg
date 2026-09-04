@@ -32,10 +32,13 @@ jobs:
       # which reads DATABASE_URL and expects a populated database. Point this
       # at a read-only CI database via the repo/environment secret. This is a
       # stub: no new test files are created, we only run what already exists.
+      # Use `python -m pytest` (not the bare `pytest` console script) so the
+      # repo root is prepended to sys.path — otherwise `from app.main import
+      # app` in conftest.py fails with ModuleNotFoundError: No module named 'app'.
       - name: Run test suite
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pytest tests/ -v
+        run: python -m pytest tests/ -v
 
 
   bundle:

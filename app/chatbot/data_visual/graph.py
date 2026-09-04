@@ -13,6 +13,7 @@ from app.chatbot.data_visual.nodes import (
     validate_response,
     rewrite_query,
     chosen_route,
+    generate_data_visual, 
     respond
 )
 
@@ -29,6 +30,7 @@ def build_data_visual_graph():
     builder.add_node("execute_query", execute_query)
     builder.add_node("validate_response", validate_response)
     builder.add_node("rewrite_query", rewrite_query)
+    builder.add_node("generate_data_visual", generate_data_visual)
     builder.add_node("respond", respond)
 
     builder.add_edge(
@@ -57,16 +59,18 @@ def build_data_visual_graph():
         chosen_route,
         {
             "rewrite_query" : "rewrite_query",
-            "respond" : "respond"
+            "generate_data_visual" : "generate_data_visual",
+            "respond" : "respond",
         }
     )
 
     builder.add_edge("rewrite_query", "generate_response")
+    builder.add_edge("generate_data_visual", "respond")
     builder.add_edge("respond", END)
 
     return builder.compile()
 
 
 data_visual_graph = build_data_visual_graph() 
-
+# data_visual_graph.get_graph().draw_mermaid_png()
 
