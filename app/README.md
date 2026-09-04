@@ -10,7 +10,7 @@
 
 - [ ] **historical dashboard** 
   - [x] Ingest qualifying results
-  - [ ] head to head quali results widget 
+  - [x] head to head quali results widget 
   - [ ] ~~Ingest sprint qualifying results ( no data )~~ 
   - [x] Ingest sprint results
   - [x] ++ingest pitstop data++
@@ -29,7 +29,7 @@
 - [ ] **live dashboard** 
   - [ ] respond to openf1 to gain access and confirm api access keys
   - [ ] config kineses, and lamda pollers and publisher 
-  - [ ] use all the lap data, pitstop data, and then find a way to get the race stint data and which tire compond the driver is running on, and then using aws sagemaker and kendra (for timeseries data) build a custom live predicition machine learning model that given a driver would predict the best possible pitstop lap for undercut/overcut strategy and provide insight  
+  - [x] use all the lap data, pitstop data, and then find a way to get the race stint data and which tire compond the driver is running on, and then using aws sagemaker and kendra (for timeseries data) build a custom live predicition machine learning model that given a driver would predict the best possible pitstop lap for undercut/overcut strategy and provide insight  
 - [x] **nice to have features** 
   - [x] kalshi and polymarket and fanduel betting odds ( live or historical or both ? ) 
 
@@ -40,3 +40,4 @@
   - [x] Move regulation docs onto AWS-managed Mongodb
   - [ ] config elastic ip for ec2 instance and add it to accepted network ips for atlas
   - [x] config rds (db.t4.micro) for data platform + network inbound rules from only my comptuer for now - change it to elastic ec2 ip once code is pushed there 
+  - [x] take snapshot of running db instance to stop getting billed for comptue ( $0.095/GB - for snapshot charge) 

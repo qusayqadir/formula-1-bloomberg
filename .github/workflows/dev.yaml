@@ -1,0 +1,95 @@
+name: dev
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (pytest tests/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # NOTE: tests/ are integration tests — conftest.py fixtures hit the API,
+      # which reads DATABASE_URL and expects a populated database. Point this
+      # at a read-only CI database via the repo/environment secret. This is a
+      # stub: no new test files are created, we only run what already exists.
+      - name: Run test suite
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pytest tests/ -v
+
+
+  bundle:
+    name: build release bundle
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      bundle_name: ${{ steps.name.outputs.bundle_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute bundle name
+        id: name
+        run: |
+          BUNDLE_NAME="release-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+          echo "bundle_name=${BUNDLE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Release bundle: ${BUNDLE_NAME}"
+
+      # The bundle = every artifact prod needs to push to AWS:
+      #   → ECR image 
+      #   - Lambda consumer function code
+      #   - lambda_orchestrator_fargate.py → orchestrator Lambda
+      #   - task-definition.json → ECS task def (registered on promote)
+      - name: Package release bundle
+        id: pack
+        run: |
+          BUNDLE_NAME="${{ steps.name.outputs.bundle_name }}"
+          tar -czf "${BUNDLE_NAME}.tar.gz" \
+            app/pipeline/live/producer \
+            app/pipeline/live/consumers \
+            app/pipeline/live/lambda_orchestrator_fargate.py \
+            requirements.txt
+          echo "Built ${BUNDLE_NAME}.tar.gz"
+          ls -la "${BUNDLE_NAME}.tar.gz"
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.bundle_name }}
+          path: ${{ steps.name.outputs.bundle_name }}.tar.gz
+          retention-days: 30
+
+      - name: Promotion instructions
+        run: |
+          {
+            echo "## Release bundle ready"
+            echo ""
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| bundle_name | \`${{ steps.name.outputs.bundle_name }}\` |"
+            echo "| run_id | \`${{ github.run_id }}\` |"
+            echo "| commit | \`${GITHUB_SHA}\` |"
+            echo ""
+            echo "**To promote to prod:** run the **prod** workflow"
+            echo "(Actions → prod → Run workflow) with the \`bundle_name\`"
+            echo "and \`run_id\` above."
+          } >> "$GITHUB_STEP_SUMMARY"

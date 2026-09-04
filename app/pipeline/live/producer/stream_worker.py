@@ -8,17 +8,22 @@ import aiomqtt
 #async http endpoints
 import httpx
 import psycopg
+from psycopg.rows import dict_row
 from aiobotocore.session import get_session
 from dotenv import load_dotenv
-
-from core.database import get_connection
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SESSION_SQS = os.environ["sessoin_sqs_url"]
+
+def get_connection(**kwargs) -> psycopg.Connection:
+    url = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
+    return psycopg.connect(url, row_factory=dict_row, **kwargs)
+
+
+SESSION_SQS = os.environ["session_sqs_url"]
 TELEMETRY_SQS = os.environ["telemetry_sqs_url"]
 TIMINGS_SQS = os.environ["timings_sqs_url"]
 
@@ -29,8 +34,6 @@ BUCKET_SQS = {
     "timings": TIMINGS_SQS,
 }
 
-# car data? 270 ms per driver, do i need all the telemetry? 
-# how do i change websocket subscription based off the filters of hte frontend? 
 
 TOPIC_BUCKET: dict[str, str] = {
     "v1/laps": "timings",
@@ -49,9 +52,7 @@ TOPIC_BUCKET: dict[str, str] = {
 }
 
 
-# car_data is the firehose (~74 msg/s for 20 cars); we only forward it for the drivers
-# the user has focused, read from bronze.live_focus_selection. location stays full (all cars,
-# for the track map). Empty/absent selection for a session -> no car_data forwarded.
+
 FOCUS_REFRESH_SECONDS = 10
 focus: dict[int, set[int]] = {}  # session_key -> {driver_number, ...}
 
@@ -82,7 +83,7 @@ def _load_focus() -> dict[int, set[int]]:
         rows = conn.execute(
             "SELECT session_key, driver_numbers FROM bronze.live_focus_selection"
         ).fetchall()
-        conn.rollback()  # end the read txn without holding it open
+        conn.rollback() 
         return {row["session_key"]: set(row["driver_numbers"] or ()) for row in rows}
     except Exception:
         _reset_focus_conn()

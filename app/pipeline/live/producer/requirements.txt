@@ -1,0 +1,8 @@
+# Runtime deps for the OpenF1 live stream worker (Fargate task).
+# stream_worker.py is self-contained — these are everything it imports.
+
+aiomqtt>=2.0            # OpenF1 MQTT firehose subscription
+httpx>=0.27             # OpenF1 token endpoint
+psycopg[binary]>=3.2    # bronze.live_focus_selection reads
+aiobotocore==3.9.0      # async SQS client (dispatcher)
+python-dotenv>=1.0      # load_dotenv() — no-op in-container, env comes from task def

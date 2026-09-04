@@ -10,3 +10,5 @@ app/pipeline/ingest/data/.ingest_checkpoint.json
 app/pipeline/ingest/data/.rate_limit_log.json
 app/pipeline/ingest/data/.rate_limit.lock
 app/pipeline/ingest/data/.checkpoint.lock
+app/pipeline/live/producer/push_to_ecr.sh 
+app/pipeline/live/producer/fargate-task-definition.json 

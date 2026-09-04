@@ -1,0 +1,39 @@
+{
+  "family": "f1-stream-worker",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "256",
+  "memory": "512",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "executionRoleArn": "arn:aws:iam::FILL_ACCOUNT:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::FILL_ACCOUNT:role/f1-stream-worker-task-role",
+  "containerDefinitions": [
+    {
+      "name": "stream-worker",
+      "image": "FILL_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/f1-stream-worker:latest",
+      "essential": true,
+      "environment": [
+        { "name": "session_sqs_url", "value": "FILL_ME" },
+        { "name": "telemetry_sqs_url", "value": "FILL_ME" },
+        { "name": "timings_sqs_url", "value": "FILL_ME" }
+      ],
+      "secrets": [
+        { "name": "openf1_username", "valueFrom": "arn:aws:secretsmanager:us-east-1:FILL_ACCOUNT:secret:openf1_username" },
+        { "name": "openf1_password", "valueFrom": "arn:aws:secretsmanager:us-east-1:FILL_ACCOUNT:secret:openf1_password" },
+        { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:FILL_ACCOUNT:secret:DATABASE_URL" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/f1-stream-worker",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "worker",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}
